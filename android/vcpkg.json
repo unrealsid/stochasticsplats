@@ -1,0 +1,10 @@
+{
+  "name": "android-splatapult",
+  "version-string": "latest",
+  "dependencies": [
+    "glm",
+    "libpng",
+    "nlohmann-json",
+    "eigen3"
+  ] 
+}

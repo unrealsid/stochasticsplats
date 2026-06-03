@@ -1,0 +1,5 @@
+android/.idea/
+android/vcpkg_installed/
+build/
+libs/
+vcpkg_installed/
