@@ -3,3 +3,7 @@ android/vcpkg_installed/
 build/
 libs/
 vcpkg_installed/
+android/gradle/wrapper/
+android/gradlew
+android/gradlew.bat
+android/gradle/gradle-daemon-jvm.properties
