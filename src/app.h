@@ -74,7 +74,7 @@ public:
             HalfFloat,
             Float
         };
-        bool vrMode = false;
+        bool androidMode = true;
         bool fullscreen = false;
         FrameBuffer frameBuffer = FrameBuffer::Default;
         bool drawCarpet = false;

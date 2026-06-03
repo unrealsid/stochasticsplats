@@ -34,7 +34,6 @@
 #include "core/textrenderer.h"
 #include "core/texture.h"
 #include "core/util.h"
-#include "core/xrbuddy.h"
 
 #include "camerasconfig.h"
 #include "camerapathrenderer.h"
@@ -355,7 +354,7 @@ App::ParseResult App::ParseArguments(int argc, const char* argv[])
 
     if (options[OPENXR])
     {
-        opt.vrMode = true;
+        opt.androidMode = true;
     }
 
     if (options[FULLSCREEN])
@@ -420,7 +419,7 @@ App::ParseResult App::ParseArguments(int argc, const char* argv[])
 
 bool App::Init()
 {
-    bool isFramebufferSRGBEnabled = opt.vrMode;
+    bool isFramebufferSRGBEnabled = opt.androidMode;
 
 #ifndef __ANDROID__
     // AJT: ANDROID: TODO: make sure colors are accurate on android.
@@ -456,14 +455,10 @@ bool App::Init()
         return false;
     }
 
-    if (opt.vrMode)
+    if (opt.androidMode)
     {
-        xrBuddy = std::make_shared<XrBuddy>(mainContext, glm::vec2(Z_NEAR, Z_FAR), sampleCount);
-        if (!xrBuddy->Init())
-        {
-            Log::E("OpenXR Init failed\n");
-            return false;
-        }
+        (mainContext, glm::vec2(Z_NEAR, Z_FAR), sampleCount);
+        //TODO: Init viewport properties
     }
 
     std::string camerasConfigFilename = FindConfigFile(plyFilename, "cameras.json");
@@ -603,14 +598,14 @@ bool App::Init()
 #else
     bool useRgcSortOverride = false;
 #endif
-    int eyeCount = opt.vrMode ? 2 : 1;
+    int eyeCount = opt.androidMode ? 2 : 1;
     if (!splatRenderer->Init(gaussianCloud, isFramebufferSRGBEnabled, useRgcSortOverride, GetRenderMode(), eyeCount, customWidth, customHeight, opt.taa))
     {
         Log::E("Error initializing splat renderer!\n");
         return false;
     }
 
-    if (opt.vrMode)
+    if (opt.androidMode)
     {
         desktopProgram = std::make_shared<Program>();
         std::string defines = "#define USE_SUPERSAMPLING\n";
@@ -620,53 +615,9 @@ bool App::Init()
             Log::E("Error loading desktop shader!\n");
             return 1;
         }
-
-        xrBuddy->SetRenderCallback([this](
-            const glm::mat4& projMat, const glm::mat4& eyeMat,
-            const glm::vec4& viewport, const glm::vec2& nearFar, int viewNum)
-        {
-            Clear(glm::ivec2(0, 0), false);
-
-            glm::mat4 fullEyeMat = magicCarpet->GetCarpetMat() * eyeMat;
-
-            if (opt.drawDebug)
-            {
-                debugRenderer->Render(fullEyeMat, projMat, viewport, nearFar);
-            }
-
-            if (cameraPathRenderer)
-            {
-                cameraPathRenderer->SetShowCameras(opt.drawCameraFrustums);
-                cameraPathRenderer->SetShowPath(opt.drawCameraPath);
-                cameraPathRenderer->Render(fullEyeMat, projMat, viewport, nearFar);
-            }
-
-            if (opt.drawCarpet)
-            {
-                magicCarpet->Render(fullEyeMat, projMat, viewport, nearFar);
-            }
-
-            if (opt.drawPointCloud && pointRenderer)
-            {
-                pointRenderer->Render(fullEyeMat, projMat, viewport, nearFar);
-            }
-            else
-            {
-                GLint presentFbo = 0;
-                glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &presentFbo);
-
-                if (viewNum == 0)
-                {
-                    splatRenderer->Sort(fullEyeMat, projMat, nearFar);
-                }
-                splatRenderer->SetActiveEye(viewNum);
-                splatRenderer->SetPresentFbo((GLuint)presentFbo);
-                splatRenderer->Render(fullEyeMat, projMat, viewport, nearFar);
-            }
-        });
     }
 
-    if (!opt.vrMode && opt.frameBuffer != Options::FrameBuffer::Default)
+    if (!opt.androidMode && opt.frameBuffer != Options::FrameBuffer::Default)
     {
         desktopProgram = std::make_shared<Program>();
         if (!desktopProgram->LoadVertFrag("shader/desktop_vert.glsl", "shader/desktop_frag.glsl"))
@@ -766,7 +717,7 @@ bool App::Init()
                 vrConfig = std::make_shared<VrConfig>();
             }
 
-            if (opt.vrMode)
+            if (opt.androidMode)
             {
                 vrConfig->SetFloorMat(magicCarpet->GetCarpetMat());
             }
@@ -936,76 +887,10 @@ void App::UpdateFps(float fps)
 
 bool App::Process(float dt)
 {
-    if (opt.vrMode)
+    if (opt.androidMode)
     {
-        if (!xrBuddy->PollEvents())
-        {
-            Log::E("xrBuddy PollEvents failed\n");
-            return false;
-        }
-
-        if (!xrBuddy->SyncInput())
-        {
-            Log::E("xrBuddy SyncInput failed\n");
-            return false;
-        }
-
-        // copy vr input into MagicCarpet
-        MagicCarpet::Pose headPose, rightPose, leftPose;
-        if (!xrBuddy->GetActionPosition("head_pose", &headPose.pos, &headPose.posValid, &headPose.posTracked))
-        {
-            Log::W("xrBuddy GetActionPosition(head_pose) failed\n");
-        }
-        if (!xrBuddy->GetActionOrientation("head_pose", &headPose.rot, &headPose.rotValid, &headPose.rotTracked))
-        {
-            Log::W("xrBuddy GetActionOrientation(head_pose) failed\n");
-        }
-        xrBuddy->GetActionPosition("l_aim_pose", &leftPose.pos, &leftPose.posValid, &leftPose.posTracked);
-        xrBuddy->GetActionOrientation("l_aim_pose", &leftPose.rot, &leftPose.rotValid, &leftPose.rotTracked);
-        xrBuddy->GetActionPosition("r_aim_pose", &rightPose.pos, &rightPose.posValid, &rightPose.posTracked);
-        xrBuddy->GetActionOrientation("r_aim_pose", &rightPose.rot, &rightPose.rotValid, &rightPose.rotTracked);
-
-        glm::vec2 leftStick(0.0f, 0.0f);
-        glm::vec2 rightStick(0.0f, 0.0f);
-        bool valid = false;
-        bool changed = false;
-        xrBuddy->GetActionVec2("l_stick", &leftStick, &valid, &changed);
-        xrBuddy->GetActionVec2("r_stick", &rightStick, &valid, &changed);
-
-        // Convert trackpad into a "stick", for HTC Vive controllers
-        glm::vec2 leftTrackpadStick(0.0f, 0.0f);
-        bool leftTrackpadClick = false;
-        xrBuddy->GetActionBool("l_trackpad_click", &leftTrackpadClick, &valid, &changed);
-        if (leftTrackpadClick && valid)
-        {
-            xrBuddy->GetActionFloat("l_trackpad_x", &leftTrackpadStick.x, &valid, &changed);
-            xrBuddy->GetActionFloat("l_trackpad_y", &leftTrackpadStick.y, &valid, &changed);
-        }
-        else
-        {
-            leftTrackpadStick = glm::vec2(0.0f, 0.0f);
-        }
-
-        glm::vec2 rightTrackpadStick(0.0f, 0.0f);
-        bool rightTrackpadClick = false;
-        xrBuddy->GetActionBool("r_trackpad_click", &rightTrackpadClick, &valid, &changed);
-        if (rightTrackpadClick && valid)
-        {
-            xrBuddy->GetActionFloat("r_trackpad_x", &rightTrackpadStick.x, &valid, &changed);
-            xrBuddy->GetActionFloat("r_trackpad_y", &rightTrackpadStick.y, &valid, &changed);
-        }
-        else
-        {
-            rightTrackpadStick = glm::vec2(0.0f, 0.0f);
-        }
-
-        MagicCarpet::ButtonState buttonState;
-        xrBuddy->GetActionBool("l_select_click", &buttonState.leftTrigger, &valid, &changed);
-        xrBuddy->GetActionBool("r_select_click", &buttonState.rightTrigger, &valid, &changed);
-        xrBuddy->GetActionBool("l_squeeze_click", &buttonState.leftGrip, &valid, &changed);
-        xrBuddy->GetActionBool("r_squeeze_click", &buttonState.rightGrip, &valid, &changed);
-        magicCarpet->Process(headPose, leftPose, rightPose, leftStick + leftTrackpadStick,
-                             rightStick + rightTrackpadStick, buttonState, dt);
+        //TODO: Android input processing
+        //Should be a good spot to get IMU data
     }
 #ifdef USE_SDL
 
@@ -1027,20 +912,7 @@ bool App::Render(float dt, const glm::ivec2& windowSize)
     int width = windowSize.x;
     int height = windowSize.y;
 
-    if (opt.vrMode)
-    {
-        if (xrBuddy->SessionReady())
-        {
-            if (!xrBuddy->RenderFrame())
-            {
-                Log::E("xrBuddy RenderFrame failed\n");
-                return false;
-            }
-        }
-        else
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        }
+
 #ifndef __ANDROID__
         // render desktop.
         Clear(windowSize, true);
@@ -1054,8 +926,7 @@ bool App::Render(float dt, const glm::ivec2& windowSize)
             textRenderer->Render(glm::mat4(1.0f), projMat, viewport, nearFar);
         }
 #endif
-    }
-    else
+
     {
         // lazy init of fbo, fbo is only used for HalfFloat, Float option.
         if (opt.frameBuffer != Options::FrameBuffer::Default && fboSize != windowSize)

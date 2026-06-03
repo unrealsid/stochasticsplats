@@ -149,7 +149,11 @@ bool SplatRenderer::Init(std::shared_ptr<GaussianCloud> gaussianCloud,
     // Initialize member variables
     isFramebufferSRGBEnabled = isFramebufferSRGBEnabledIn;
     useRgcSortOverride = useRgcSortOverrideIn;
+#ifndef __ANDROID__
     bool useMultiRadixSort = GLEW_KHR_shader_subgroup && !useRgcSortOverride;
+#else
+    bool useMultiRadixSort = !useRgcSortOverride;
+#endif
     numGaussians = gaussianCloud->GetNumGaussians();
     renderMode = inrenderMode;
     width = inwidth;
@@ -332,7 +336,11 @@ void SplatRenderer::Sort(const glm::mat4& cameraMat, const glm::mat4& projMat,
     const size_t numPoints = posVec.size();
     glm::mat4 modelViewMat = glm::inverse(cameraMat);
 
+#ifndef __ANDROID__
     bool useMultiRadixSort = GLEW_KHR_shader_subgroup && !useRgcSortOverride;
+#else
+    bool useMultiRadixSort = !useRgcSortOverride;
+#endif
 
     // 24 bit radix sort still has some artifacts on some datasets, so use 32 bit sort.
     //const uint32_t NUM_BYTES = useMultiRadixSort ? 3 : 4;
@@ -617,8 +625,13 @@ void SplatRenderer::runWarpPass(
     const glm::mat4& pv)
 {
     static const GLfloat ZEROS[4] = {0,0,0,0};
+
+//TODO: Fix android usage for glClearImage
+#ifndef __ANDROID__
     glClearTexImage(outAvg->GetObj(), 0, GL_RGBA, GL_FLOAT, ZEROS);
     glClearTexImage(outXYZ->GetObj(), 0, GL_RGBA, GL_FLOAT, ZEROS);
+#else
+#endif
 
     warpProg->Bind();
     bindTex2D(0, inAvg); warpProg->SetUniform("colorTexture", 0);
@@ -728,8 +741,13 @@ void SplatRenderer::resetTemporalTextures()
     auto clear = [](const std::shared_ptr<Texture>& tex,
                     GLenum fmt = GL_RGBA, GLenum type = GL_FLOAT)
     {
+        //TODO: Fix android usage for glClearImage
         if (tex)  // tex can be null during first initialisation
+#ifndef __ANDROID__
             glClearTexImage(tex->GetObj(), 0, fmt, type, ZEROS);
+#else
+        return;
+#endif
     };
 
     clear(T.warpAvgTexA); clear(T.warpAvgTexB);

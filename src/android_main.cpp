@@ -16,11 +16,8 @@
 
 #include "core/log.h"
 #include "core/util.h"
-#include "core/xrbuddy.h"
 #include "app.h"
 
-// AJT: ANDROID TODO: xrPerfSettingsSetPerformanceLevelEXT
-// AJT: ANDROID TODO: pfnSetAndroidApplicationThreadKHR on XR_SESSION_STATE_READY
 // see ovrApp::HandleSessionStateChanges in SceneModelXr.cpp
 /*
 static const int CPU_LEVEL = 2;
@@ -435,7 +432,7 @@ void android_main(struct android_app* androidApp)
                 timeoutMilliseconds = -1;
             }
 
-            if (ALooper_pollAll(timeoutMilliseconds, NULL, &events, (void**)&source) < 0)
+            if (ALooper_pollOnce(timeoutMilliseconds, nullptr, &events, (void**)&source) < 0)
             {
                 break;
             }
