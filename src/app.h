@@ -74,7 +74,7 @@ public:
             HalfFloat,
             Float
         };
-        bool androidMode = true;
+        bool androidMode = false;
         bool fullscreen = false;
         FrameBuffer frameBuffer = FrameBuffer::Default;
         bool drawCarpet = false;
@@ -86,7 +86,7 @@ public:
         bool drawCameraPath = false;
         bool importFullSH = true;
         std::string renderMode = "ST";
-        bool taa = true;
+        bool taa = false;
     };
 
 protected:

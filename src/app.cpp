@@ -583,7 +583,6 @@ bool App::Init()
     //gaussianCloud->PruneSplats(glm::vec3(flyCam->GetCameraMat()[3]), SPLAT_COUNT);
     gaussianCloud->PruneSplats(focalPoint, SPLAT_COUNT);
 #endif
-#pragma optimize('', off)
     splatRenderer = std::make_shared<splat::SplatRenderer>();
 #if __ANDROID__
     bool useRgcSortOverride = true;
@@ -609,7 +608,6 @@ bool App::Init()
         }
     }
 
-#pragma optimize('', on)
     if (!opt.androidMode && opt.frameBuffer != Options::FrameBuffer::Default)
     {
         desktopProgram = std::make_shared<Program>();
@@ -712,7 +710,7 @@ bool App::Init()
 
             if (opt.androidMode)
             {
-                vrConfig->SetFloorMat(magicCarpet->GetCarpetMat());
+              
             }
             else
             {

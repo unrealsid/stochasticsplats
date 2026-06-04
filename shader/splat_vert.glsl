@@ -211,7 +211,7 @@ void main(void)
 
     // compute 2d extents for the splat, using covariance matrix ellipse
     // see https://cookierobotics.com/007/
-    float k = max(min(2 * log(255.0f * alpha), 9.0f), 0.0f);
+    float k = max(min(2.0 * log(255.0f * alpha), 9.0f), 0.0f);
     float a = cov2D[0][0];
     float b = cov2D[0][1];
     float c = cov2D[1][1];

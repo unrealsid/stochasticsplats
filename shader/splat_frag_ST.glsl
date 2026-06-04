@@ -42,13 +42,13 @@ float randomUniform(uint seed_in) {
 
 
 void main() {
-    const vec2 d = gl_FragCoord.xy - frag_p;  // Distance from Gaussian center
+    vec2 d = gl_FragCoord.xy - frag_p;  // Distance from Gaussian center
 
-    const float exponent = d.x * d.x * frag_cov2inv.x +
+    float exponent = d.x * d.x * frag_cov2inv.x +
                      d.y * d.y * frag_cov2inv.z +
                      2.0 * d.x * d.y * frag_cov2inv.y;
 
-    const float alpha = frag_color.a * exp(-0.5 * exponent);
+    float alpha = frag_color.a * exp(-0.5 * exponent);
 
     if (alpha <= THRESHOLD)
         discard;

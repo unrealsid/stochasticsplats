@@ -187,13 +187,8 @@ struct AppContext
         UnpackAsset("shader/presort_compute.glsl");
         UnpackAsset("shader/splat_frag.glsl");
         UnpackAsset("shader/splat_frag_ST.glsl");
-        UnpackAsset("shader/warp_vert.glsl");
-        UnpackAsset("shader/warp_frag.glsl");
         UnpackAsset("shader/splat_geom.glsl");
         UnpackAsset("shader/splat_vert.glsl");
-        UnpackAsset("shader/avg_vert.glsl");
-        UnpackAsset("shader/avg_frag.glsl");
-        UnpackAsset("shader/display_frag.glsl");
         UnpackAsset("shader/text_frag.glsl");
         UnpackAsset("shader/text_vert.glsl");
 
@@ -456,11 +451,19 @@ void android_main(struct android_app* androidApp)
             break;
         }
 
-        if (!app.Render(dt, glm::ivec2(0.0f, 0.0f)))
+        EGLint screenWidth = 0;
+        EGLint screenHeight = 0;
+
+        eglQuerySurface(ctx.egl.display, ctx.egl.windowSurface, EGL_WIDTH, &screenWidth);
+        eglQuerySurface(ctx.egl.display, ctx.egl.windowSurface, EGL_HEIGHT, &screenHeight);
+
+        if (!app.Render(dt, glm::ivec2(screenWidth, screenHeight)))
         {
             Log::E("App::Render failed!\n");
             return;
         }
+
+        eglSwapBuffers(ctx.egl.display, ctx.egl.windowSurface);
     }
 
     // TODO: DESTROY STUFF
