@@ -363,10 +363,29 @@ void android_main(struct android_app* androidApp)
     androidApp->userData = &ctx;
     androidApp->onAppCmd = app_handle_cmd;
 
+    // If the user closed the app while we were waiting
+    if (androidApp->destroyRequested != 0) return;
+
     if (!ctx.SetupEGLContext())
     {
         Log::E("AppContext::SetupEGLContext failed!\n");
         return;
+    }
+
+    //Block till the window is created, then an event is fired to init the context in app_handle_cmd under the APP_CMD_INIT_WINDOW event
+    while (androidApp->window == nullptr && androidApp->destroyRequested == 0)
+    {
+        int events;
+        struct android_poll_source* source;
+
+        // -1 blocks the thread completely until an OS event fires (like window creation)
+        if (ALooper_pollOnce(-1, nullptr, &events, (void**)&source) >= 0)
+        {
+            if (source != nullptr)
+            {
+                source->process(androidApp, source);
+            }
+        }
     }
 
     if (!ctx.SetupAssets(androidApp))
