@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
             float delta = (ticks - frameTicks) / 1000.0f;
             float fps = (float)FPS_FRAMES / delta;
             frameTicks = ticks;
-            app.UpdateFps(fps);
+            //app.UpdateFps(fps);
         }
         float dt = (ticks - lastTicks) / 1000.0f;
         lastTicks = ticks;

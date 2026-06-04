@@ -74,14 +74,14 @@ public:
             HalfFloat,
             Float
         };
-        bool androidMode = false;
+        bool androidMode = true;
         bool fullscreen = false;
         FrameBuffer frameBuffer = FrameBuffer::Default;
         bool drawCarpet = false;
         bool drawPointCloud = false;
-        bool drawDebug = true;
+        bool drawDebug = false;
         bool debugLogging = false;
-        bool drawFps = true;
+        bool drawFps = false;
         bool drawCameraFrustums = false;
         bool drawCameraPath = false;
         bool importFullSH = true;

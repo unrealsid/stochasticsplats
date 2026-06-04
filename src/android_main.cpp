@@ -204,11 +204,8 @@ struct AppContext
         MakeDir("data/sh_test/point_cloud");
         MakeDir("data/sh_test/point_cloud/iteration_30000");
         //UnpackAsset("data/sh_test/point_cloud/iteration_30000/point_cloud.ply");
-        //UnpackAsset("data/sh_test/vr.json");
-
-        MakeDir("data/livingroom");
+        UnpackAsset("data/test_vr.json");
         UnpackAsset("data/test.ply");
-        //UnpackAsset("data/livingroom/livingroom_vr.json");
 
         return true;
     }

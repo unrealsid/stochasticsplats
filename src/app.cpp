@@ -363,7 +363,7 @@ App::ParseResult App::ParseArguments(int argc, const char* argv[])
 
     if (options[DEBUG])
     {
-        opt.debugLogging = true;
+        opt.debugLogging = false;
     }
 
     if (options[FP32])
@@ -440,7 +440,7 @@ bool App::Init()
     }
 #endif
 
-    debugRenderer = std::make_shared<DebugRenderer>();
+    /*debugRenderer = std::make_shared<DebugRenderer>();
     if (!debugRenderer->Init())
     {
         Log::E("DebugRenderer Init failed\n");
@@ -452,13 +452,7 @@ bool App::Init()
     {
         Log::E("TextRenderer Init failed\n");
         return false;
-    }
-
-    if (opt.androidMode)
-    {
-        (mainContext, glm::vec2(Z_NEAR, Z_FAR), sampleCount);
-        //TODO: Init viewport properties
-    }
+    }*/
 
     std::string camerasConfigFilename = FindConfigFile(plyFilename, "cameras.json");
     if (!camerasConfigFilename.empty())
@@ -824,7 +818,7 @@ bool App::Init()
     });
 #endif // USE_SDL
 
-    fpsText = textRenderer->AddScreenTextWithDropShadow(glm::ivec2(0, 0), (int)TEXT_NUM_ROWS, WHITE, BLACK, "fps:");
+    //fpsText = textRenderer->AddScreenTextWithDropShadow(glm::ivec2(0, 0), (int)TEXT_NUM_ROWS, WHITE, BLACK, "fps:");
 
     return true;
 }
@@ -999,7 +993,7 @@ bool App::Render(float dt, const glm::ivec2& windowSize)
         }
     }
 
-    debugRenderer->EndFrame();
+    //debugRenderer->EndFrame();
 
     frameNum++;
 
