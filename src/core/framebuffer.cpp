@@ -18,6 +18,30 @@
 #endif
 
 #include "texture.h"
+#include "log.h"
+
+const char* GetFramebufferStatusString(GLenum status)
+{
+    switch (status)
+    {
+        case GL_FRAMEBUFFER_UNDEFINED:                     return "GL_FRAMEBUFFER_UNDEFINED";
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:         return "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT";
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: return "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT";
+        case GL_FRAMEBUFFER_UNSUPPORTED:                   return "GL_FRAMEBUFFER_UNSUPPORTED";
+        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:        return "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE";
+#ifdef GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER
+            case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:        return "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER";
+#endif
+#ifdef GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER
+            case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:        return "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER";
+#endif
+#ifdef GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS
+            case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:      return "GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS";
+#endif
+        case GL_FRAMEBUFFER_COMPLETE:                      return "GL_FRAMEBUFFER_COMPLETE";
+        default:                                           return "UNKNOWN_FRAMEBUFFER_STATUS";
+    }
+}
 
 FrameBuffer::FrameBuffer()
 {
@@ -59,5 +83,11 @@ void FrameBuffer::AttachStencil(std::shared_ptr<Texture> stencilTex)
 
 bool FrameBuffer::IsComplete() const
 {
-    return glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE)
+    {
+        Log::E("Framebuffer incomplete: %s (0x%x)\n", GetFramebufferStatusString(status), status);
+        return false;
+    }
+    return true;
 }

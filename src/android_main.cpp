@@ -75,7 +75,7 @@ struct AppContext
         EGLDisplay display;
         EGLConfig config;
         EGLContext context;
-        EGLSurface tinySurface;
+        EGLSurface windowSurface;
     };
 
     EGLInfo egl;
@@ -112,39 +112,12 @@ struct AppContext
                                         EGL_GREEN_SIZE, 8,
                                         EGL_BLUE_SIZE, 8,
                                         EGL_ALPHA_SIZE, 8, // need alpha for the multi-pass timewarp compositor
-                                        EGL_DEPTH_SIZE, 0,
+                                        EGL_DEPTH_SIZE, 24,
                                         EGL_STENCIL_SIZE, 0,
                                         EGL_SAMPLES, 0,
                                         EGL_NONE};
-        egl.config = 0;
-        for (int i = 0; i < numConfigs; i++)
-        {
-            EGLint value = 0;
-            eglGetConfigAttrib(egl.display, configs[i], EGL_RENDERABLE_TYPE, &value);
-            if ((value & EGL_OPENGL_ES3_BIT_KHR) != EGL_OPENGL_ES3_BIT_KHR) {
-                continue;
-            }
-            // The pbuffer config also needs to be compatible with normal window rendering
-            // so it can share textures with the window context.
-            eglGetConfigAttrib(egl.display, configs[i], EGL_SURFACE_TYPE, &value);
-            if ((value & (EGL_WINDOW_BIT | EGL_PBUFFER_BIT)) != (EGL_WINDOW_BIT | EGL_PBUFFER_BIT)) {
-                continue;
-            }
 
-            int j = 0;
-            for (; configAttribs[j] != EGL_NONE; j += 2) {
-                eglGetConfigAttrib(egl.display, configs[i], configAttribs[j], &value);
-                if (value != configAttribs[j + 1]) {
-                    break;
-                }
-            }
-            if (configAttribs[j] == EGL_NONE) {
-                egl.config = configs[i];
-                break;
-            }
-        }
-
-        if (egl.config == 0)
+        if (!eglChooseConfig(egl.display, configAttribs, &egl.config, 1, &numConfigs) || numConfigs == 0)
         {
             Log::E("eglChooseConfig() failed: %s\n", EglErrorString(eglGetError()));
             return false;
@@ -158,25 +131,28 @@ struct AppContext
             return false;
         }
 
-        const EGLint surfaceAttribs[] = {EGL_WIDTH, 16, EGL_HEIGHT, 16, EGL_NONE};
-        egl.tinySurface = eglCreatePbufferSurface(egl.display, egl.config, surfaceAttribs);
-        if (egl.tinySurface == EGL_NO_SURFACE)
+        return true;
+    }
+
+    bool InitWindow(ANativeWindow* window)
+    {
+        egl.windowSurface = eglCreateWindowSurface(egl.display, egl.config, window, nullptr);
+        if (egl.windowSurface == EGL_NO_SURFACE)
         {
-            Log::E("eglCreatePbufferSurface() failed: %s", EglErrorString(eglGetError()));
-            eglDestroyContext(egl.display, egl.context);
-            egl.context = EGL_NO_CONTEXT;
+            Log::E("eglCreateWindowSurface() failed: %s", EglErrorString(eglGetError()));
             return false;
         }
 
-        if (eglMakeCurrent(egl.display, egl.tinySurface, egl.tinySurface, egl.context) == EGL_FALSE)
+        if (eglMakeCurrent(egl.display, egl.windowSurface, egl.windowSurface, egl.context) == EGL_FALSE)
         {
             Log::E("eglMakeCurrent() failed: %s", EglErrorString(eglGetError()));
-            eglDestroySurface(egl.display, egl.tinySurface);
+            eglDestroySurface(egl.display, egl.windowSurface);
             eglDestroyContext(egl.display, egl.context);
             egl.context = EGL_NO_CONTEXT;
             return false;
         }
 
+        Log::D("SUCCESS! Window and App are fully initialized.");
         return true;
     }
 
@@ -210,8 +186,14 @@ struct AppContext
         UnpackAsset("shader/point_vert.glsl");
         UnpackAsset("shader/presort_compute.glsl");
         UnpackAsset("shader/splat_frag.glsl");
+        UnpackAsset("shader/splat_frag_ST.glsl");
+        UnpackAsset("shader/warp_vert.glsl");
+        UnpackAsset("shader/warp_frag.glsl");
         UnpackAsset("shader/splat_geom.glsl");
         UnpackAsset("shader/splat_vert.glsl");
+        UnpackAsset("shader/avg_vert.glsl");
+        UnpackAsset("shader/avg_frag.glsl");
+        UnpackAsset("shader/display_frag.glsl");
         UnpackAsset("shader/text_frag.glsl");
         UnpackAsset("shader/text_vert.glsl");
 
@@ -221,17 +203,17 @@ struct AppContext
 
         MakeDir("data");
         MakeDir("data/sh_test");
-        UnpackAsset("data/sh_test/cameras.json");
-        UnpackAsset("data/sh_test/cfg_args");
-        UnpackAsset("data/sh_test/input.ply");
+        //UnpackAsset("data/sh_test/cameras.json");
+        //UnpackAsset("data/sh_test/cfg_args");
+        //UnpackAsset("data/sh_test/input.ply");
         MakeDir("data/sh_test/point_cloud");
         MakeDir("data/sh_test/point_cloud/iteration_30000");
-        UnpackAsset("data/sh_test/point_cloud/iteration_30000/point_cloud.ply");
-        UnpackAsset("data/sh_test/vr.json");
+        //UnpackAsset("data/sh_test/point_cloud/iteration_30000/point_cloud.ply");
+        //UnpackAsset("data/sh_test/vr.json");
 
         MakeDir("data/livingroom");
-        UnpackAsset("data/livingroom/livingroom.ply");
-        UnpackAsset("data/livingroom/livingroom_vr.json");
+        UnpackAsset("data/test.ply");
+        //UnpackAsset("data/livingroom/livingroom_vr.json");
 
         return true;
     }
@@ -280,7 +262,7 @@ struct AppContext
         }
 
         // Create buffer for reading
-        const size_t BUFFER_SIZE = 1024;
+        const size_t BUFFER_SIZE = 2048;
         char buffer[BUFFER_SIZE];
 
         // Open file for writing
@@ -346,6 +328,10 @@ static void app_handle_cmd(struct android_app* androidApp, int32_t cmd)
     case APP_CMD_INIT_WINDOW:
         Log::D("surfaceCreated()\n");
         Log::D("    APP_CMD_INIT_WINDOW\n");
+        if (ctx.InitWindow(androidApp->window))
+        {
+            ctx.sessionActive = true;
+        }
         break;
     case APP_CMD_TERM_WINDOW:
         Log::D("surfaceDestroyed()\n");
@@ -395,7 +381,7 @@ void android_main(struct android_app* androidApp)
     mainContext.context = ctx.egl.context;
     mainContext.androidApp = androidApp;
 
-    std::string dataPath = ctx.externalDataPath + "data/livingroom/livingroom.ply";
+    std::string dataPath = ctx.externalDataPath + "data/test.ply";
     int argc = 4;
     const char* argv[] = {"splataplut", "-v", "-d", dataPath.c_str()};
     App app(mainContext);

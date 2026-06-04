@@ -22,14 +22,8 @@ android {
             cmake {
                 cppFlags += "-std=c++17"
                 arguments += "-DSRC_ROOT=C:/Users/Sid/Documents/Visual_Studio_18/Code/StochasticSplat/src"
-                arguments += "-DANDROID_VCPKG_DIR=C:/Users/Sid/Documents/Visual_Studio_18/Code/StochasticSplat/android/vcpkg_installed/x64-android"
+                arguments += "-DANDROID_VCPKG_DIR=C:/Users/Sid/Documents/Visual_Studio_18/Code/StochasticSplat/android/vcpkg_installed/arm64-android"
             }
-        }
-    }
-
-    sourceSets {
-        getByName("main") {
-            assets.srcDirs("../../texture", "../../shader", "../../font", "../../data")
         }
     }
 
@@ -70,4 +64,20 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
+}
+
+// Create a task to copy the external folders into Android's native assets folder
+tasks.register<Copy>("copyNativeAssets") {
+    from("../../texture") { into("texture") }
+    from("../../shader") { into("shader") }
+    from("../../font") { into("font") }
+    from("../../data") { into("data") }
+
+    // Dump them exactly where Android natively expects them
+    into("src/main/assets")
+}
+
+// Tell Gradle it must run this copy task before it builds the app
+tasks.named("preBuild") {
+    dependsOn("copyNativeAssets")
 }

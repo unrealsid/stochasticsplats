@@ -333,7 +333,8 @@ static std::string rootPath("");
 static std::string rootPath("../");
 #else
 // enables us to run from the build/Debug dir
-static std::string rootPath("../../");
+//TODO: Remove hardcoded path
+static std::string rootPath("C://Users/Sid/Documents/Visual_Studio_18/Code/StochasticSplat/");
 #endif
 #endif
 

@@ -39,7 +39,6 @@
 #include "camerapathrenderer.h"
 #include "flycam.h"
 #include "gaussiancloud.h"
-#include "magiccarpet.h"
 #include "pointcloud.h"
 #include "pointrenderer.h"
 #include "splatrenderer.h"
@@ -549,13 +548,6 @@ bool App::Init()
     Decompose(flyCamMat, &flyCamScale, &flyCamRot, &flyCamPos);
     flyCam = std::make_shared<FlyCam>(floorMatUp, flyCamPos, flyCamRot, MOVE_SPEED, ROT_SPEED);
 
-    magicCarpet = std::make_shared<MagicCarpet>(floorMat, MOVE_SPEED);
-    if (!magicCarpet->Init(isFramebufferSRGBEnabled))
-    {
-        Log::E("Error initalizing MagicCarpet\n");
-        return false;
-    }
-
     std::string pointCloudFilename = FindConfigFile(plyFilename, "input.ply");
     if (!pointCloudFilename.empty())
     {
@@ -591,14 +583,14 @@ bool App::Init()
     //gaussianCloud->PruneSplats(glm::vec3(flyCam->GetCameraMat()[3]), SPLAT_COUNT);
     gaussianCloud->PruneSplats(focalPoint, SPLAT_COUNT);
 #endif
-
+#pragma optimize('', off)
     splatRenderer = std::make_shared<splat::SplatRenderer>();
 #if __ANDROID__
     bool useRgcSortOverride = true;
 #else
     bool useRgcSortOverride = false;
 #endif
-    int eyeCount = opt.androidMode ? 2 : 1;
+    int eyeCount = 1;
     if (!splatRenderer->Init(gaussianCloud, isFramebufferSRGBEnabled, useRgcSortOverride, GetRenderMode(), eyeCount, customWidth, customHeight, opt.taa))
     {
         Log::E("Error initializing splat renderer!\n");
@@ -617,6 +609,7 @@ bool App::Init()
         }
     }
 
+#pragma optimize('', on)
     if (!opt.androidMode && opt.frameBuffer != Options::FrameBuffer::Default)
     {
         desktopProgram = std::make_shared<Program>();
@@ -916,7 +909,7 @@ bool App::Render(float dt, const glm::ivec2& windowSize)
 #ifndef __ANDROID__
         // render desktop.
         Clear(windowSize, true);
-        RenderDesktop(windowSize, desktopProgram, xrBuddy->GetColorTexture(), true);
+        //RenderDesktop(windowSize, desktopProgram, xrBuddy->GetColorTexture(), true);
 
         if (opt.drawFps)
         {
@@ -982,11 +975,6 @@ bool App::Render(float dt, const glm::ivec2& windowSize)
             cameraPathRenderer->SetShowCameras(opt.drawCameraFrustums);
             cameraPathRenderer->SetShowPath(opt.drawCameraPath);
             cameraPathRenderer->Render(cameraMat, projMat, viewport, nearFar);
-        }
-
-        if (opt.drawCarpet)
-        {
-            magicCarpet->Render(cameraMat, projMat, viewport, nearFar);
         }
 
         if (opt.drawPointCloud && pointRenderer)

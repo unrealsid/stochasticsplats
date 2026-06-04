@@ -103,7 +103,6 @@ protected:
 
     int cameraIndex;
     std::shared_ptr<FlyCam> flyCam;
-    std::shared_ptr<MagicCarpet> magicCarpet;
 
     std::shared_ptr<PointCloud> pointCloud;
     std::shared_ptr<GaussianCloud> gaussianCloud;
