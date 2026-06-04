@@ -54,6 +54,7 @@ add_library(android_splatapult SHARED
         ${SRC_ROOT}/vrconfig.cpp
         ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c
         native-lib.cpp
+        utils/imu_sensor.cpp
 )
 
 target_include_directories(android_splatapult PRIVATE

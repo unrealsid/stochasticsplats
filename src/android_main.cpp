@@ -18,6 +18,8 @@
 #include "core/util.h"
 #include "app.h"
 
+#include "../android/app/src/main/cpp/utils/imu_sensor.h"
+
 // see ovrApp::HandleSessionStateChanges in SceneModelXr.cpp
 /*
 static const int CPU_LEVEL = 2;
@@ -66,6 +68,8 @@ struct AppContext
     AppContext() : resumed(false), sessionActive(false), assMan(nullptr), alwaysCopyAssets(true) {}
     bool resumed;
     bool sessionActive;
+
+    ImuSensor imu;
 
     struct EGLInfo
     {
@@ -364,6 +368,11 @@ void android_main(struct android_app* androidApp)
         return;
     }
 
+#ifdef __ANDROID__
+    //Init the imu on android
+    ctx.imu.Init(androidApp->looper);
+#endif
+
     //Block till the window is created, then an event is fired to init the context in app_handle_cmd under the APP_CMD_INIT_WINDOW event
     while (androidApp->window == nullptr && androidApp->destroyRequested == 0)
     {
@@ -429,7 +438,9 @@ void android_main(struct android_app* androidApp)
                 timeoutMilliseconds = -1;
             }
 
-            if (ALooper_pollOnce(timeoutMilliseconds, nullptr, &events, (void**)&source) < 0)
+            int result = ALooper_pollOnce(timeoutMilliseconds, nullptr, &events, (void**)&source);
+
+            if (result < 0)
             {
                 break;
             }
@@ -438,6 +449,11 @@ void android_main(struct android_app* androidApp)
             if (source != NULL)
             {
                 source->process(androidApp, source);
+            }
+
+            if (result == ImuSensor::LOOPER_ID_SENSOR)
+            {
+                ctx.imu.ProcessEvents();
             }
         }
 
