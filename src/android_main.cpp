@@ -4,7 +4,6 @@
 */
 
 #include <android/native_window_jni.h> // for native window JNI
-#include <android_native_app_glue.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GLES3/gl3.h>
@@ -13,11 +12,14 @@
 #include <sys/prctl.h> // for prctl( PR_SET_NAME )
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <string>
+#include <android/asset_manager.h>
 
 #include "core/log.h"
 #include "core/util.h"
 #include "app.h"
 
+#include "../android/app/src/main/cpp/utils/ar_core_manager.h"
 #include "../android/app/src/main/cpp/utils/imu_sensor.h"
 
 // see ovrApp::HandleSessionStateChanges in SceneModelXr.cpp
@@ -69,7 +71,7 @@ struct AppContext
     bool resumed;
     bool sessionActive;
 
-    ImuSensor imu;
+    ARCoreManager ar_core_manager;
 
     struct EGLInfo
     {
@@ -160,14 +162,15 @@ struct AppContext
         return true;
     }
 
-    bool SetupAssets(android_app* app)
-    {
-        assert(app);
-        assert(app->activity->assetManager);
-        assert(app->activity->externalDataPath);
+    AAssetManager* g_asset_manager;
 
-        assMan = app->activity->assetManager;
-        externalDataPath = std::string(app->activity->externalDataPath) + "/";
+    bool SetupAssets(AAssetManager* assetManager, const std::string& externalPath)
+    {
+        assert(assetManager);
+        assert(externalPath != "");
+
+        externalDataPath = externalPath + "/";
+        g_asset_manager = assetManager;
 
         // from util.h
         SetRootPath(externalDataPath);
@@ -250,7 +253,7 @@ struct AppContext
             }
         }
 
-        AAsset *asset = AAssetManager_open(assMan, assetFilename.c_str(), AASSET_MODE_STREAMING);
+        AAsset *asset = AAssetManager_open(g_asset_manager, assetFilename.c_str(), AASSET_MODE_STREAMING);
         if (asset == nullptr)
         {
             Log::E("UnpackAsset \"%s\" AAssetManager_open failed!\n", assetFilename.c_str());
@@ -289,123 +292,96 @@ struct AppContext
 /**
  * Process the next main command.
  */
-static void app_handle_cmd(struct android_app* androidApp, int32_t cmd)
-{
-    AppContext& ctx = *(AppContext*)androidApp->userData;
+//static void app_handle_cmd(struct android_app* androidApp, int32_t cmd)
+//{
+//    AppContext& ctx = *(AppContext*)androidApp->userData;
+//
+//    switch (cmd)
+//    {
+//    // There is no APP_CMD_CREATE. The ANativeActivity creates the
+//    // application thread from onCreate(). The application thread
+//    // then calls android_main().
+//    case APP_CMD_START:
+//        Log::D("onStart()\n");
+//        Log::D("    APP_CMD_START\n");
+//        break;
+//    case APP_CMD_RESUME:
+//        Log::D("onResume()\n");
+//        Log::D("    APP_CMD_RESUME\n");
+//        ctx.resumed = true;
+//        break;
+//    case APP_CMD_PAUSE:
+//        Log::D("onPause()\n");
+//        Log::D("    APP_CMD_PAUSE\n");
+//        ctx.resumed = false;
+//        break;
+//    case APP_CMD_STOP:
+//        Log::D("onStop()\n");
+//        Log::D("    APP_CMD_STOP\n");
+//        break;
+//    case APP_CMD_DESTROY:
+//        Log::D("onDestroy()\n");
+//        Log::D("    APP_CMD_DESTROY\n");
+//        ctx.Clear();
+//        break;
+//    case APP_CMD_INIT_WINDOW:
+//        Log::D("surfaceCreated()\n");
+//        Log::D("    APP_CMD_INIT_WINDOW\n");
+//        if (ctx.InitWindow(androidApp->window))
+//        {
+//            ctx.sessionActive = true;
+//        }
+//        break;
+//    case APP_CMD_TERM_WINDOW:
+//        Log::D("surfaceDestroyed()\n");
+//        Log::D("    APP_CMD_TERM_WINDOW\n");
+//        break;
+//    }
+//}
 
-    switch (cmd)
-    {
-    // There is no APP_CMD_CREATE. The ANativeActivity creates the
-    // application thread from onCreate(). The application thread
-    // then calls android_main().
-    case APP_CMD_START:
-        Log::D("onStart()\n");
-        Log::D("    APP_CMD_START\n");
-        break;
-    case APP_CMD_RESUME:
-        Log::D("onResume()\n");
-        Log::D("    APP_CMD_RESUME\n");
-        ctx.resumed = true;
-        break;
-    case APP_CMD_PAUSE:
-        Log::D("onPause()\n");
-        Log::D("    APP_CMD_PAUSE\n");
-        ctx.resumed = false;
-        break;
-    case APP_CMD_STOP:
-        Log::D("onStop()\n");
-        Log::D("    APP_CMD_STOP\n");
-        break;
-    case APP_CMD_DESTROY:
-        Log::D("onDestroy()\n");
-        Log::D("    APP_CMD_DESTROY\n");
-        ctx.Clear();
-        break;
-    case APP_CMD_INIT_WINDOW:
-        Log::D("surfaceCreated()\n");
-        Log::D("    APP_CMD_INIT_WINDOW\n");
-        if (ctx.InitWindow(androidApp->window))
-        {
-            ctx.sessionActive = true;
-        }
-        break;
-    case APP_CMD_TERM_WINDOW:
-        Log::D("surfaceDestroyed()\n");
-        Log::D("    APP_CMD_TERM_WINDOW\n");
-        break;
-    }
-}
+std::unique_ptr<App> g_app = nullptr;
 
-/**
- * This is the main entry point of a native application that is using
- * android_native_app_glue.  It runs in its own thread, with its own
- * event loop for receiving input events and doing other things.
- */
-void android_main(struct android_app* androidApp)
+void android_init(JNIEnv* env, jlong gl_context, jobject activity, AAssetManager* asset_manager, const std::string& externalPath)
 {
     Log::SetAppName("splatapult");
 
     Log::D("----------------------------------------------------------------\n");
-    Log::D("android_app_entry()\n");
-    Log::D("    android_main()\n");
-
-    JNIEnv* env;
-    (*androidApp->activity->vm).AttachCurrentThread(&env, nullptr);
-
-    // Note that AttachCurrentThread will reset the thread name.
-    prctl(PR_SET_NAME, (long)"android_main", 0, 0, 0);
+    Log::D("android_init()\n");
 
     AppContext ctx;
-    androidApp->userData = &ctx;
-    androidApp->onAppCmd = app_handle_cmd;
 
-    // If the user closed the app while we were waiting
-    if (androidApp->destroyRequested != 0) return;
+    jclass clazz = env->GetObjectClass(activity);
 
-    if (!ctx.SetupEGLContext())
-    {
-        Log::E("AppContext::SetupEGLContext failed!\n");
-        return;
-    }
 
-#ifdef __ANDROID__
-    //Init the imu on android
-    ctx.imu.Init(androidApp->looper);
-#endif
+//    if (!ctx.SetupEGLContext())
+//    {
+//        Log::E("AppContext::SetupEGLContext failed!\n");
+//        return;
+//    }
 
-    //Block till the window is created, then an event is fired to init the context in app_handle_cmd under the APP_CMD_INIT_WINDOW event
-    while (androidApp->window == nullptr && androidApp->destroyRequested == 0)
-    {
-        int events;
-        struct android_poll_source* source;
+    // ARCore initialization could be handled here if needed,
+    // but we'd need to adapt it from the android_app based version.
+    // ctx.ar_core_manager.Initialize(env, activity, activity);
+    // ctx.ar_core_manager.InitializeGL();
 
-        // -1 blocks the thread completely until an OS event fires (like window creation)
-        if (ALooper_pollOnce(-1, nullptr, &events, (void**)&source) >= 0)
-        {
-            if (source != nullptr)
-            {
-                source->process(androidApp, source);
-            }
-        }
-    }
-
-    if (!ctx.SetupAssets(androidApp))
+    if (!ctx.SetupAssets(asset_manager, externalPath))
     {
         Log::E("AppContext::SetupAssets failed!\n");
         return;
     }
 
     MainContext mainContext;
-    mainContext.display = ctx.egl.display;
-    mainContext.config = ctx.egl.config;
-    mainContext.context = ctx.egl.context;
-    mainContext.androidApp = androidApp;
+    mainContext.display = eglGetCurrentDisplay();
+    //mainContext.config = ctx.egl.config;
+    //mainContext.context = ctx.egl.context;
 
     std::string dataPath = ctx.externalDataPath + "data/test.ply";
     int argc = 4;
     const char* argv[] = {"splataplut", "-v", "-d", dataPath.c_str()};
-    App app(mainContext);
-    App::ParseResult parseResult = app.ParseArguments(argc, argv);
+
+    g_app = std::make_unique<App>(mainContext);
+
+    App::ParseResult parseResult = g_app->ParseArguments(argc, argv);
     switch (parseResult)
     {
     case App::SUCCESS_RESULT:
@@ -417,70 +393,31 @@ void android_main(struct android_app* androidApp)
         return;
     }
 
-    if (!app.Init())
+    if (!g_app->Init())
     {
         Log::E("App::Init failed!\n");
         return;
     }
 
-    while (androidApp->destroyRequested == 0)
-    {
-        // Read all pending events.
-        for (;;)
-        {
-            int events;
-            struct android_poll_source* source;
-            // If the timeout is zero, returns immediately without blocking.
-            // If the timeout is negative, waits indefinitely until an event appears.
-            int timeoutMilliseconds = 0;
-            if (ctx.resumed == false && ctx.sessionActive == false && androidApp->destroyRequested == 0)
-            {
-                timeoutMilliseconds = -1;
-            }
-
-            int result = ALooper_pollOnce(timeoutMilliseconds, nullptr, &events, (void**)&source);
-
-            if (result < 0)
-            {
-                break;
-            }
-
-            // Process this event.
-            if (source != NULL)
-            {
-                source->process(androidApp, source);
-            }
-
-            if (result == ImuSensor::LOOPER_ID_SENSOR)
-            {
-                ctx.imu.ProcessEvents();
-            }
-        }
-
-        float dt = 1.0f / 72.0f;
-        if (!app.Process(dt))
-        {
-            Log::E("App::Process failed!\n");
-            break;
-        }
-
-        EGLint screenWidth = 0;
-        EGLint screenHeight = 0;
-
-        eglQuerySurface(ctx.egl.display, ctx.egl.windowSurface, EGL_WIDTH, &screenWidth);
-        eglQuerySurface(ctx.egl.display, ctx.egl.windowSurface, EGL_HEIGHT, &screenHeight);
-
-        if (!app.Render(dt, glm::ivec2(screenWidth, screenHeight)))
-        {
-            Log::E("App::Render failed!\n");
-            return;
-        }
-
-        eglSwapBuffers(ctx.egl.display, ctx.egl.windowSurface);
-    }
-
     // TODO: DESTROY STUFF
     Log::D("Finished!\n");
+}
 
-    (*androidApp->activity->vm).DetachCurrentThread();
+void android_render()
+{
+    EGLint screenWidth = 0;
+    EGLint screenHeight = 0;
+
+    EGLDisplay display = eglGetCurrentDisplay();
+    EGLSurface surface = eglGetCurrentSurface(EGL_DRAW);
+
+    eglQuerySurface(display, surface, EGL_WIDTH, &screenWidth);
+    eglQuerySurface(display, surface, EGL_HEIGHT, &screenHeight);
+
+    float dt = 1.0f / 72.0f;
+    if (!g_app->Render(dt, glm::ivec2(screenWidth, screenHeight)))
+    {
+        Log::E("App::Render failed!\n");
+        return;
+    }
 }

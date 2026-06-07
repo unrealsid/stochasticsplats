@@ -36,6 +36,7 @@ union SDL_Event;
 class App
 {
 public:
+
     App(MainContext& mainContextIn);
 
     enum ParseResult

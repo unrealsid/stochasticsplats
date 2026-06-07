@@ -11,7 +11,6 @@
 #include <GLES3/gl3.h>
 #include <GLES3/gl3ext.h>
 #include <jni.h>
-#include <android_native_app_glue.h>
 #elif defined(__linux__)
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
@@ -33,7 +32,6 @@
         EGLDisplay display;
         EGLConfig config;
         EGLContext context;
-        android_app* androidApp;
     };
 #elif defined(__linux__)
     struct MainContext
