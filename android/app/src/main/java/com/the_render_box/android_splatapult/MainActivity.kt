@@ -9,6 +9,7 @@ import android.os.Debug
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.snackbar.Snackbar
+import com.the_render_box.android_splatapult.JniInterface.Companion.setCameraAccess
 import com.the_render_box.android_splatapult.databinding.ActivityMainBinding
 import com.the_render_box.android_splatapult.utils.CameraPermissionHelper
 import javax.microedition.khronos.egl.EGLConfig
@@ -55,7 +56,7 @@ class MainActivity : AppCompatActivity() , GLSurfaceView.Renderer {
         // 0 is the CAMERA_PERMISSION_CODE from your CameraPermissionHelper
         if (requestCode == 0)
         {
-
+            setCameraAccess(true)
         }
     }
 

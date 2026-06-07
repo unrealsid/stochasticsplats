@@ -20,5 +20,8 @@ class JniInterface {
 
         @JvmStatic
         external fun setExternalDataPath(path: String)
+
+        @JvmStatic
+        external fun setCameraAccess(cameraAccess : Boolean)
     }
 }

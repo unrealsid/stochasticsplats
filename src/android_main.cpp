@@ -340,6 +340,7 @@ struct AppContext
 //}
 
 std::unique_ptr<App> g_app = nullptr;
+bool g_cameraAccess = false;
 
 void android_init(JNIEnv* env, jlong gl_context, jobject activity, AAssetManager* asset_manager, const std::string& externalPath)
 {
@@ -351,13 +352,6 @@ void android_init(JNIEnv* env, jlong gl_context, jobject activity, AAssetManager
     AppContext ctx;
 
     jclass clazz = env->GetObjectClass(activity);
-
-
-//    if (!ctx.SetupEGLContext())
-//    {
-//        Log::E("AppContext::SetupEGLContext failed!\n");
-//        return;
-//    }
 
     // ARCore initialization could be handled here if needed,
     // but we'd need to adapt it from the android_app based version.
@@ -421,3 +415,10 @@ void android_render()
         return;
     }
 }
+
+void setCameraAccess(bool cameraAccess)
+{
+    g_cameraAccess = cameraAccess;
+}
+
+
