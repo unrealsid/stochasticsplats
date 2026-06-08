@@ -907,7 +907,7 @@ bool App::Render(float dt, const glm::ivec2& windowSize)
         {
             glm::vec4 viewport(0.0f, 0.0f, (float)width, (float)height);
             glm::vec2 nearFar(Z_NEAR, Z_FAR);
-            glm::mat4 projMat = glm::perspective(FOVY, (float)width / (float)height, Z_NEAR, Z_FAR);
+            glm::mat4 projMat = useCameraOverride ? projMatOverride : glm::perspective(FOVY, (float)width / (float)height, Z_NEAR, Z_FAR);
             textRenderer->Render(glm::mat4(1.0f), projMat, viewport, nearFar);
         }
 #endif
@@ -952,10 +952,10 @@ bool App::Render(float dt, const glm::ivec2& windowSize)
 
         Clear(windowSize, true);
 
-        glm::mat4 cameraMat = flyCam->GetCameraMat();
+        glm::mat4 cameraMat = useCameraOverride ? glm::inverse(viewMatOverride) : flyCam->GetCameraMat();
         glm::vec4 viewport(0.0f, 0.0f, (float)width, (float)height);
         glm::vec2 nearFar(Z_NEAR, Z_FAR);
-        glm::mat4 projMat = glm::perspective(FOVY, (float)width / (float)height, Z_NEAR, Z_FAR);
+        glm::mat4 projMat = useCameraOverride ? projMatOverride : glm::perspective(FOVY, (float)width / (float)height, Z_NEAR, Z_FAR);
 
         if (opt.drawDebug)
         {
@@ -1008,6 +1008,18 @@ void App::OnQuit(const VoidCallback& cb)
 void App::OnResize(const ResizeCallback& cb)
 {
     resizeCallback = cb;
+}
+
+void App::SetCameraMatrices(const glm::mat4& viewMat, const glm::mat4& projMat)
+{
+    viewMatOverride = viewMat;
+    projMatOverride = projMat;
+    useCameraOverride = true;
+}
+
+void App::ClearCameraMatrices()
+{
+    useCameraOverride = false;
 }
 
 

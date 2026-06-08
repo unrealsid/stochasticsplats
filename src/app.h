@@ -55,6 +55,10 @@ public:
     bool Render(float dt, const glm::ivec2& windowSize);
     int GetSampleCount() const { return sampleCount; }
     void SetSampleCount(int count) { sampleCount = count; }
+
+    void SetCameraMatrices(const glm::mat4& viewMat, const glm::mat4& projMat);
+    void ClearCameraMatrices();
+
     int GetCustomWidth() const { return customWidth; }
     int GetCustomHeight() const { return customHeight; }
     void SetCustomWidth(int width) { customWidth = width; }
@@ -130,6 +134,10 @@ protected:
     ResizeCallback resizeCallback;
 
     std::vector<float> fpsVec;
+
+    glm::mat4 viewMatOverride;
+    glm::mat4 projMatOverride;
+    bool useCameraOverride = false;
 
     int sampleCount = 1;
     int customWidth = 1296;

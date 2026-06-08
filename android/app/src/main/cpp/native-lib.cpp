@@ -10,10 +10,19 @@
 
 void android_init(JNIEnv* env, jlong gl_context, jobject activity, AAssetManager* asset_manager, const std::string& externalPath);
 void android_render();
+void android_onSurfaceChanged(int width, int height, int displayRotation);
+void android_onResume(JNIEnv* env);
+void android_onPause();
 void setCameraAccess(bool cameraAccess);
 
 AAssetManager* g_AssetManager = nullptr;
 std::string g_ExternalDataPath;
+JavaVM* g_JavaVM = nullptr;
+
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
+    g_JavaVM = vm;
+    return JNI_VERSION_1_6;
+}
 
 extern "C"
 JNIEXPORT void JNICALL
@@ -47,6 +56,28 @@ Java_com_the_1render_1box_android_1splatapult_JniInterface_onDrawFrame(JNIEnv *e
 {
     android_render();
 }
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_the_1render_1box_android_1splatapult_JniInterface_onSurfaceChanged(JNIEnv *env, jclass clazz, jint width, jint height, jint display_rotation)
+{
+    android_onSurfaceChanged(width, height, display_rotation);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_the_1render_1box_android_1splatapult_JniInterface_onResume(JNIEnv *env, jclass clazz)
+{
+    android_onResume(env);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_the_1render_1box_android_1splatapult_JniInterface_onPause(JNIEnv *env, jclass clazz)
+{
+    android_onPause();
+}
+
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_the_1render_1box_android_1splatapult_JniInterface_setCameraAccess(JNIEnv *env, jclass clazz, jboolean camera_access)

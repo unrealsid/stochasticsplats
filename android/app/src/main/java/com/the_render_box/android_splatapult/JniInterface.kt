@@ -16,6 +16,15 @@ class JniInterface {
         external fun onDrawFrame(glContext : Long)
 
         @JvmStatic
+        external fun onSurfaceChanged(width: Int, height: Int, displayRotation: Int)
+
+        @JvmStatic
+        external fun onResume()
+
+        @JvmStatic
+        external fun onPause()
+
+        @JvmStatic
         external fun setAssetManager(assetManager: Any)
 
         @JvmStatic

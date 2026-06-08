@@ -1,6 +1,8 @@
 #include "ar_core_manager.h"
 #include <android/log.h>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 
@@ -132,7 +134,19 @@ void ARCoreManager::Update()
     is_tracking_ = (camera_tracking_state == AR_TRACKING_STATE_TRACKING);
 
     if (is_tracking_) {
-        ArCamera_getViewMatrix(ar_session_, ar_camera, glm::value_ptr(view_mat_));
+        ArPose* camera_pose = nullptr;
+        ArPose_create(ar_session_, nullptr, &camera_pose);
+        ArCamera_getDisplayOrientedPose(ar_session_, ar_camera, camera_pose);
+        float out_pose[7];
+        ArPose_getPoseRaw(ar_session_, camera_pose, out_pose);
+        ArPose_destroy(camera_pose);
+
+        glm::quat q(out_pose[3], out_pose[0], out_pose[1], out_pose[2]); // w, x, y, z
+        glm::vec3 t(out_pose[4], out_pose[5], out_pose[6]);
+
+        glm::mat4 model_mat = glm::translate(glm::mat4(1.0f), t) * glm::mat4_cast(q);
+        view_mat_ = glm::inverse(model_mat);
+
         ArCamera_getProjectionMatrix(ar_session_, ar_camera, 0.1f, 1000.0f, glm::value_ptr(proj_mat_));
     }
 

@@ -34,6 +34,7 @@ android {
                 arguments += "-DANDROID_VCPKG_DIR=${project.rootDir.absolutePath.replace("\\", "/")}/vcpkg_installed/arm64-android"
                 arguments += "-DARCORE_LIBPATH=${arcoreLibPath.replace("\\", "/")}/jni"
                 arguments += "-DARCORE_INCLUDE=${arcoreLibPath.replace("\\", "/")}/include"
+                abiFilters += "arm64-v8a"
             }
         }
     }

@@ -341,6 +341,15 @@ struct AppContext
 
 std::unique_ptr<App> g_app = nullptr;
 bool g_cameraAccess = false;
+ARCoreManager g_arCoreManager;
+jobject g_activityGlobal = nullptr;
+bool g_arCoreInitialized = false;
+bool g_arCorePaused = true;
+int g_screenWidth = 0;
+int g_screenHeight = 0;
+int g_displayRotation = 0;
+
+extern JavaVM* g_JavaVM; // from native-lib.cpp
 
 void android_init(JNIEnv* env, jlong gl_context, jobject activity, AAssetManager* asset_manager, const std::string& externalPath)
 {
@@ -349,14 +358,14 @@ void android_init(JNIEnv* env, jlong gl_context, jobject activity, AAssetManager
     Log::D("----------------------------------------------------------------\n");
     Log::D("android_init()\n");
 
+    if (g_activityGlobal) {
+        env->DeleteGlobalRef(g_activityGlobal);
+    }
+    g_activityGlobal = env->NewGlobalRef(activity);
+
     AppContext ctx;
 
-    jclass clazz = env->GetObjectClass(activity);
-
-    // ARCore initialization could be handled here if needed,
-    // but we'd need to adapt it from the android_app based version.
-    // ctx.ar_core_manager.Initialize(env, activity, activity);
-    // ctx.ar_core_manager.InitializeGL();
+    // jclass clazz = env->GetObjectClass(activity);
 
     if (!ctx.SetupAssets(asset_manager, externalPath))
     {
@@ -408,11 +417,81 @@ void android_render()
     eglQuerySurface(display, surface, EGL_WIDTH, &screenWidth);
     eglQuerySurface(display, surface, EGL_HEIGHT, &screenHeight);
 
+    if (g_app == nullptr) return;
+
+    if (g_cameraAccess && !g_arCorePaused)
+    {
+        JNIEnv* env = nullptr;
+        if (g_JavaVM->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_OK)
+        {
+            if (!g_arCoreInitialized)
+            {
+                if (g_arCoreManager.Initialize(env, g_activityGlobal, g_activityGlobal))
+                {
+                    g_arCoreManager.InitializeGL();
+                    g_arCoreInitialized = true;
+                    g_arCoreManager.OnDisplayGeometryChanged(g_displayRotation, g_screenWidth, g_screenHeight);
+                    g_arCoreManager.Resume(env);
+                    Log::D("ARCore Initialized\n");
+                }
+            }
+
+            if (g_arCoreInitialized)
+            {
+                g_arCoreManager.Update();
+                if (g_arCoreManager.IsTracking())
+                {
+                    g_app->SetCameraMatrices(g_arCoreManager.GetViewMatrix(), g_arCoreManager.GetProjectionMatrix());
+                }
+                else
+                {
+                    g_app->ClearCameraMatrices();
+                }
+            }
+        }
+    }
+    else
+    {
+        if (g_app)
+        {
+            g_app->ClearCameraMatrices();
+        }
+    }
+
     float dt = 1.0f / 72.0f;
     if (!g_app->Render(dt, glm::ivec2(screenWidth, screenHeight)))
     {
         Log::E("App::Render failed!\n");
         return;
+    }
+}
+
+void android_onSurfaceChanged(int width, int height, int displayRotation)
+{
+    g_screenWidth = width;
+    g_screenHeight = height;
+    g_displayRotation = displayRotation;
+    if (g_arCoreInitialized)
+    {
+        g_arCoreManager.OnDisplayGeometryChanged(displayRotation, width, height);
+    }
+}
+
+void android_onResume(JNIEnv* env)
+{
+    g_arCorePaused = false;
+    if (g_arCoreInitialized)
+    {
+        g_arCoreManager.Resume(env);
+    }
+}
+
+void android_onPause()
+{
+    g_arCorePaused = true;
+    if (g_arCoreInitialized)
+    {
+        g_arCoreManager.Pause();
     }
 }
 

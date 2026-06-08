@@ -62,6 +62,7 @@ class MainActivity : AppCompatActivity() , GLSurfaceView.Renderer {
 
     override fun onResume() {
         super.onResume()
+        binding.surfaceView.onResume()
 
         //ARCore requires camera permissions to operate. If we did not yet obtain runtime
         //permission on Android M and above, now is a good time to ask the user for it.
@@ -70,15 +71,21 @@ class MainActivity : AppCompatActivity() , GLSurfaceView.Renderer {
             return
         }
 
-        try {
-            //JniInterface.onResume(nativeApplication, applicationContext, this)
-        } catch (e: Exception) {
-            Log.e(TAG, "Exception creating session", e)
+        setCameraAccess(true)
 
-            // Kotlin exceptions return a nullable message, so we provide a safe fallback
+        try {
+            JniInterface.onResume()
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception resuming session", e)
             return
         }
-        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        binding.surfaceView.onPause()
+        JniInterface.onPause()
+    }
 
     override fun onDrawFrame(gl: GL10?) {
         val currentContext: EGLContext = EGL14.eglGetCurrentContext()
@@ -90,7 +97,13 @@ class MainActivity : AppCompatActivity() , GLSurfaceView.Renderer {
         width: Int,
         height: Int
     ) {
-
+        val displayRotation = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            display?.rotation ?: 0
+        } else {
+            @Suppress("DEPRECATION")
+            windowManager.defaultDisplay.rotation
+        }
+        JniInterface.onSurfaceChanged(width, height, displayRotation)
     }
 
     override fun onSurfaceCreated(
