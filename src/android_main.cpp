@@ -217,6 +217,7 @@ struct AppContext
         //UnpackAsset("data/sh_test/point_cloud/iteration_30000/point_cloud.ply");
         UnpackAsset("data/test_vr.json");
         UnpackAsset("data/point_cloud_truck_30k.ply");
+        UnpackAsset("data/test.ply");
 
         return true;
     }
@@ -384,7 +385,7 @@ void android_init(JNIEnv* env, jlong gl_context, jobject activity, AAssetManager
 
     std::string dataPath = ctx.externalDataPath + "data/point_cloud_truck_30k.ply";
     int argc = 6;
-    const char* argv[] = {"splatapult", "-v", "-d", "--render_mode", "AB", dataPath.c_str()};
+    const char* argv[] = {"splatapult", "-v", "-d", "--render_mode", "ST", dataPath.c_str()};
 
     g_app = std::make_unique<App>(mainContext);
 

@@ -109,7 +109,7 @@ static bool CompileShader(GLenum type, const std::string& source, GLint* shaderO
 Program::Program() : program(0), vertShader(0), geomShader(0), fragShader(0), computeShader(0)
 {
 #ifdef __ANDROID__
-    AddMacro("HEADER", "#version 320 es\nprecision highp float;");
+    AddMacro("HEADER", "#version 320 es\nprecision highp float;\nprecision highp int;");
 #else
     AddMacro("HEADER", "#version 460");
 #endif
