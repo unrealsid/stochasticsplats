@@ -192,6 +192,9 @@ struct AppContext
         UnpackAsset("shader/point_geom.glsl");
         UnpackAsset("shader/point_vert.glsl");
         UnpackAsset("shader/presort_compute.glsl");
+        UnpackAsset("shader/multi_radixsort.glsl");
+        UnpackAsset("shader/multi_radixsort_histograms.glsl");
+        UnpackAsset("shader/single_radixsort.glsl");
         UnpackAsset("shader/splat_frag.glsl");
         UnpackAsset("shader/splat_frag_ST.glsl");
         UnpackAsset("shader/splat_geom.glsl");
@@ -379,8 +382,8 @@ void android_init(JNIEnv* env, jlong gl_context, jobject activity, AAssetManager
     //mainContext.context = ctx.egl.context;
 
     std::string dataPath = ctx.externalDataPath + "data/test.ply";
-    int argc = 4;
-    const char* argv[] = {"splataplut", "-v", "-d", dataPath.c_str()};
+    int argc = 6;
+    const char* argv[] = {"splatapult", "-v", "-d", "--render_mode", "AB", dataPath.c_str()};
 
     g_app = std::make_unique<App>(mainContext);
 
@@ -391,14 +394,17 @@ void android_init(JNIEnv* env, jlong gl_context, jobject activity, AAssetManager
         break;
     case App::ERROR_RESULT:
         Log::E("App::ParseArguments failed!\n");
+        g_app.reset();
         return;
     case App::QUIT_RESULT:
+        g_app.reset();
         return;
     }
 
     if (!g_app->Init())
     {
         Log::E("App::Init failed!\n");
+        g_app.reset();
         return;
     }
 

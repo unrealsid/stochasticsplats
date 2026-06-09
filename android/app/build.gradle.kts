@@ -113,7 +113,7 @@ tasks.register("extractNativeLibraries") {
                 from(zipTree(f))
                 into(arcoreLibPath)
                 include("jni/**/*")
-                include("include/**/*")
+                //include("include/**/*")
             }
         }
     }

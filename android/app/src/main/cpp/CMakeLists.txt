@@ -52,6 +52,7 @@ add_library(android_splatapult SHARED
 
 target_include_directories(android_splatapult PRIVATE
         "${SRC_ROOT}"
+        "${SRC_ROOT}/core"
         "${ANDROID_VCPKG_DIR}/include"
 )
 

@@ -112,7 +112,7 @@ class MainActivity : AppCompatActivity() , GLSurfaceView.Renderer {
     ) {
         val currentContext: EGLContext = EGL14.eglGetCurrentContext()
         val externalPath = getExternalFilesDir(null)?.absolutePath ?: ""
-        
+
         JniInterface.setAssetManager(assets)
         JniInterface.setExternalDataPath(externalPath)
         JniInterface.onSurfaceCreated(currentContext.nativeHandle, this)

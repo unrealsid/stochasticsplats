@@ -50,7 +50,7 @@ void main()
         uint count = atomicCounterIncrement(output_count);
         // 16.16 fixed point
         //uint fixedPointZ = uint(0xffffffff) - uint(clamp(depth, 0.0f, 65535.0f) * 65536.0f);
-		uint fixedPointZ = keyMax - uint((depth / nearFar.y) * keyMax);
+		uint fixedPointZ = keyMax - uint((depth / nearFar.y) * float(keyMax));
         quantizedZs[count] = fixedPointZ;
         indices[count] = idx;
     }

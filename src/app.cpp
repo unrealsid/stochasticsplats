@@ -54,6 +54,16 @@ enum optionIndex
     FP16,
     FP32,
     NOSH,
+    RENDER_MODE,
+};
+
+struct Arg: public option::Arg
+{
+    static option::ArgStatus Required(const option::Option& option, bool msg)
+    {
+        if (option.arg != 0) return option::ARG_OK;
+        return option::ARG_ILLEGAL;
+    }
 };
 
 const option::Descriptor usage[] =
@@ -66,6 +76,7 @@ const option::Descriptor usage[] =
     { FP16, 0, "", "fp16", option::Arg::None,             "  --fp16            Use 16-bit half-precision floating frame buffer, to reduce color banding artifacts" },
     { FP32, 0, "", "fp32", option::Arg::None,             "  --fp32            Use 32-bit floating point frame buffer, to reduce color banding even more" },
     { NOSH, 0, "", "nosh", option::Arg::None,             "  --nosh            Don't load/render full sh, this will reduce memory usage and higher performance" },
+    { RENDER_MODE, 0, "", "render_mode", Arg::Required, "  --render_mode <mode>  Set render mode (ST, ST-popfree, AB)" },
     { UNKNOWN, 0, "", "", option::Arg::None,              "\nExamples:\n  splataplut data/test.ply\n  splatapult -v data/test.ply" },
     { 0, 0, 0, 0, 0, 0}
 };
@@ -291,7 +302,13 @@ App::ParseResult App::ParseArguments(int argc, const char* argv[])
         argc--;
         argv++;
     }
-    for (int i = 1; i < argc; i++) {
+
+    std::cout << "Arguments (" << argc << "):\n";
+    for (int i = 0; i < argc; i++) {
+        std::cout << "  [" << i << "] " << argv[i] << "\n";
+    }
+
+    for (int i = 0; i < argc; i++) {
       if (strcmp(argv[i], "--samples") == 0 && i + 1 < argc) {
         sampleCount = atoi(argv[i + 1]);
         i++; // skip the next argument
@@ -308,15 +325,36 @@ App::ParseResult App::ParseArguments(int argc, const char* argv[])
         continue;
       }
 
-      const std::vector<std::string> validRenderModes = {
-        "ST",
-        "ST-popfree",
-        "AB"
-      };
+      if (strcmp(argv[i], "--no-taa") == 0) {
+        opt.taa = false;
+        continue;
+      }
+    }
+    option::Stats stats(usage, argc, argv);
+    std::vector<option::Option> options(stats.options_max);
+    std::vector<option::Option> buffer(stats.buffer_max);
+    option::Parser parse(usage, argc, argv, options.data(), buffer.data());
 
-      if (strcmp(argv[i], "--render_mode") == 0 && i + 1 < argc) {
-        std::string mode = argv[i + 1];
-        // Check if mode is in validRenderModes
+//    if (parse.error())
+//    {
+//        return ERROR_RESULT;
+//    }
+
+    if (options[HELP] || argc == 0)
+    {
+        option::printUsage(std::cout, usage);
+        PrintControls();
+        return QUIT_RESULT;
+    }
+
+    if (options[RENDER_MODE] && options[RENDER_MODE].arg)
+    {
+        const std::vector<std::string> validRenderModes = {
+            "ST",
+            "ST-popfree",
+            "AB"
+        };
+        std::string mode = options[RENDER_MODE].arg;
         if (std::find(validRenderModes.begin(), validRenderModes.end(), mode) == validRenderModes.end()) {
           std::cerr << "Error: Invalid value for --render_mode: " << mode << std::endl;
           std::cerr << "Valid options are:";
@@ -325,30 +363,6 @@ App::ParseResult App::ParseArguments(int argc, const char* argv[])
           exit(EXIT_FAILURE);
         }
         opt.renderMode = mode;
-        i++;
-        continue;
-      }
-      if (strcmp(argv[i], "--no-taa") == 0) {
-        opt.taa = false;
-        continue;
-      }
-
-    }
-    option::Stats stats(usage, argc, argv);
-    std::vector<option::Option> options(stats.options_max);
-    std::vector<option::Option> buffer(stats.buffer_max);
-    option::Parser parse(usage, argc, argv, options.data(), buffer.data());
-
-    if (parse.error())
-    {
-        return ERROR_RESULT;
-    }
-
-    if (options[HELP] || argc == 0)
-    {
-        option::printUsage(std::cout, usage);
-        PrintControls();
-        return QUIT_RESULT;
     }
 
     if (options[OPENXR])
@@ -388,6 +402,11 @@ App::ParseResult App::ParseArguments(int argc, const char* argv[])
         return ERROR_RESULT;
     }
 
+    for (int i = 0; i < parse.nonOptionsCount(); i++)
+    {
+        Log::D("Non option %i : %s", i, parse.nonOption(i));
+    }
+
     if (parse.nonOptionsCount() == 0)
     {
         std::cout << "Expected filename argument\n";
@@ -395,7 +414,7 @@ App::ParseResult App::ParseArguments(int argc, const char* argv[])
     }
     else
     {
-        plyFilename = parse.nonOption(0);
+        plyFilename = parse.nonOption(parse.nonOptionsCount() - 1);
     }
 
     Log::SetLevel(opt.debugLogging ? Log::Debug : Log::Warning);
