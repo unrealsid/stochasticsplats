@@ -21,6 +21,7 @@
 
 #include "../android/app/src/main/cpp/utils/ar_core_manager.h"
 #include "../android/app/src/main/cpp/utils/imu_sensor.h"
+#include <glm/gtc/matrix_transform.hpp>
 
 // see ovrApp::HandleSessionStateChanges in SceneModelXr.cpp
 /*
@@ -215,7 +216,7 @@ struct AppContext
         MakeDir("data/sh_test/point_cloud/iteration_30000");
         //UnpackAsset("data/sh_test/point_cloud/iteration_30000/point_cloud.ply");
         UnpackAsset("data/test_vr.json");
-        UnpackAsset("data/test.ply");
+        UnpackAsset("data/point_cloud_truck_30k.ply");
 
         return true;
     }
@@ -381,7 +382,7 @@ void android_init(JNIEnv* env, jlong gl_context, jobject activity, AAssetManager
     //mainContext.config = ctx.egl.config;
     //mainContext.context = ctx.egl.context;
 
-    std::string dataPath = ctx.externalDataPath + "data/test.ply";
+    std::string dataPath = ctx.externalDataPath + "data/point_cloud_truck_30k.ply";
     int argc = 6;
     const char* argv[] = {"splatapult", "-v", "-d", "--render_mode", "AB", dataPath.c_str()};
 
@@ -447,7 +448,11 @@ void android_render()
                 g_arCoreManager.Update();
                 if (g_arCoreManager.IsTracking())
                 {
-                    g_app->SetCameraMatrices(g_arCoreManager.GetViewMatrix(), g_arCoreManager.GetProjectionMatrix());
+                    glm::mat4 viewMat = g_arCoreManager.GetViewMatrix();
+                    // Add 180 degree rotation along the forward axis (Z-axis in camera space)
+                    glm::mat4 roll180 = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0, 0, 1));
+                    viewMat = viewMat * roll180;
+                    g_app->SetCameraMatrices(viewMat, g_arCoreManager.GetProjectionMatrix());
                 }
                 else
                 {
