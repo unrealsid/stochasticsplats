@@ -70,6 +70,38 @@ void ARCoreManager::ConfigureSession()
 
     ArSession_configure(ar_session_, ar_config);
     ArConfig_destroy(ar_config);
+
+    // Set target FPS
+    ArCameraConfigFilter* filter = nullptr;
+    ArCameraConfigFilter_create(ar_session_, &filter);
+
+    uint32_t fps_filter = (target_fps_ >= 60) ? AR_CAMERA_CONFIG_TARGET_FPS_60 : AR_CAMERA_CONFIG_TARGET_FPS_30;
+    ArCameraConfigFilter_setTargetFps(ar_session_, filter, fps_filter);
+
+    ArCameraConfigList* config_list = nullptr;
+    ArCameraConfigList_create(ar_session_, &config_list);
+    ArSession_getSupportedCameraConfigsWithFilter(ar_session_, filter, config_list);
+
+    int32_t list_size = 0;
+    ArCameraConfigList_getSize(ar_session_, config_list, &list_size);
+    if (list_size > 0) {
+        ArCameraConfig* selected_config = nullptr;
+        ArCameraConfig_create(ar_session_, &selected_config);
+        // Just pick the first one that matches our filter
+        ArCameraConfigList_getItem(ar_session_, config_list, 0, selected_config);
+        ArSession_setCameraConfig(ar_session_, selected_config);
+        ArCameraConfig_destroy(selected_config);
+    }
+
+    ArCameraConfigList_destroy(config_list);
+    ArCameraConfigFilter_destroy(filter);
+}
+
+void ARCoreManager::SetTargetFps(int target_fps)
+{
+    target_fps_ = target_fps;
+    // Note: To apply this, the session must be re-configured or config must be set while paused.
+    // If the session is already initialized, we might need to Pause/Resume to apply.
 }
 
 void ARCoreManager::Resume(JNIEnv* env)

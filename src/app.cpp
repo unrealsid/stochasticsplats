@@ -916,6 +916,9 @@ bool App::Render(float dt, const glm::ivec2& windowSize)
     int width = windowSize.x;
     int height = windowSize.y;
 
+    int renderWidth = (int)(width * opt.renderScale);
+    int renderHeight = (int)(height * opt.renderScale);
+    glm::ivec2 renderSize(renderWidth, renderHeight);
 
 #ifndef __ANDROID__
         // render desktop.
@@ -932,49 +935,64 @@ bool App::Render(float dt, const glm::ivec2& windowSize)
 #endif
 
     {
-        // lazy init of fbo, fbo is only used for HalfFloat, Float option.
-        if (opt.frameBuffer != Options::FrameBuffer::Default && fboSize != windowSize)
+        // lazy init of fbo, fbo is used for HalfFloat, Float option OR when renderScale < 1.0
+        bool useFbo = (opt.frameBuffer != Options::FrameBuffer::Default) || (opt.renderScale < 1.0f);
+        if (useFbo && fboSize != renderSize)
         {
             fbo = std::make_shared<FrameBuffer>();
 
             Texture::Params texParams;
-            texParams.minFilter = FilterType::Nearest;
-            texParams.magFilter = FilterType::Nearest;
+            texParams.minFilter = FilterType::Linear; // Use linear for upscaling
+            texParams.magFilter = FilterType::Linear;
             texParams.sWrap = WrapType::ClampToEdge;
             texParams.tWrap = WrapType::ClampToEdge;
+
+            GLenum internalFormat = GL_RGBA8;
+            GLenum format = GL_RGBA;
+            GLenum type = GL_UNSIGNED_BYTE;
+
             if (opt.frameBuffer == Options::FrameBuffer::HalfFloat)
             {
-                fboColorTex = std::make_shared<Texture>(windowSize.x, windowSize.y,
-                                                        GL_RGBA16F, GL_RGBA, GL_HALF_FLOAT,
-                                                        texParams);
+                internalFormat = GL_RGBA16F;
+                type = GL_HALF_FLOAT;
             }
             else if (opt.frameBuffer == Options::FrameBuffer::Float)
             {
-                fboColorTex = std::make_shared<Texture>(windowSize.x, windowSize.y,
-                                                        GL_RGBA32F, GL_RGBA, GL_FLOAT,
-                                                        texParams);
+                internalFormat = GL_RGBA32F;
+                type = GL_FLOAT;
             }
-            else
-            {
-                Log::E("BAD opt.frameBuffer type!\n");
-            }
+
+            fboColorTex = std::make_shared<Texture>(renderSize.x, renderSize.y,
+                                                    internalFormat, format, type,
+                                                    texParams);
 
             fbo->AttachColor(fboColorTex);
 
-            fboSize = windowSize;
+            // Add depth attachment if not using TAA (TAA has its own)
+            // Actually, better to always have it for debug/point rendering
+            auto depthTex = std::make_shared<Texture>(renderSize.x, renderSize.y,
+                                                      GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT,
+                                                      texParams);
+            fbo->AttachDepth(depthTex);
+
+            fboSize = renderSize;
         }
 
-        if (opt.frameBuffer != Options::FrameBuffer::Default && fbo)
+        if (useFbo && fbo)
         {
             fbo->Bind();
+            Clear(renderSize, true);
+        }
+        else
+        {
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            Clear(windowSize, true);
         }
 
-        Clear(windowSize, true);
-
         glm::mat4 cameraMat = useCameraOverride ? glm::inverse(viewMatOverride) : flyCam->GetCameraMat();
-        glm::vec4 viewport(0.0f, 0.0f, (float)width, (float)height);
+        glm::vec4 viewport(0.0f, 0.0f, (float)renderSize.x, (float)renderSize.y);
         glm::vec2 nearFar(Z_NEAR, Z_FAR);
-        glm::mat4 projMat = useCameraOverride ? projMatOverride : glm::perspective(FOVY, (float)width / (float)height, Z_NEAR, Z_FAR);
+        glm::mat4 projMat = useCameraOverride ? projMatOverride : glm::perspective(FOVY, (float)renderSize.x / (float)renderSize.y, Z_NEAR, Z_FAR);
 
         if (opt.drawDebug)
         {
@@ -986,6 +1004,11 @@ bool App::Render(float dt, const glm::ivec2& windowSize)
             cameraPathRenderer->SetShowCameras(opt.drawCameraFrustums);
             cameraPathRenderer->SetShowPath(opt.drawCameraPath);
             cameraPathRenderer->Render(cameraMat, projMat, viewport, nearFar);
+        }
+
+        if (opt.taa && (splatRenderer->GetWidth() != renderWidth || splatRenderer->GetHeight() != renderHeight))
+        {
+            splatRenderer->resetTemporalTextures(renderWidth, renderHeight);
         }
 
         if (opt.drawPointCloud && pointRenderer)
@@ -1003,7 +1026,7 @@ bool App::Render(float dt, const glm::ivec2& windowSize)
             textRenderer->Render(cameraMat, projMat, viewport, nearFar);
         }
 
-        if (opt.frameBuffer != Options::FrameBuffer::Default && fbo)
+        if (useFbo && fbo)
         {
             // render fbo colorTexture as a full screen quad to the default fbo
             glBindFramebuffer(GL_FRAMEBUFFER, 0);

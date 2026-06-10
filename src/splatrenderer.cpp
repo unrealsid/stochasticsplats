@@ -542,7 +542,7 @@ void SplatRenderer::Render(const glm::mat4& cameraMat, const glm::mat4& projMat,
                 glViewport(0, 0, (GLint)viewport.z, (GLint)viewport.w);
                 glEnable(GL_DEPTH_TEST);
                 glDepthFunc(GL_LESS);
-                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                glClear(GL_DEPTH_BUFFER_BIT); // Only clear depth to keep AR background
             }
             glDrawElements(GL_POINTS, (GLsizei)numGaussians, GL_UNSIGNED_INT, nullptr);
 
@@ -781,28 +781,30 @@ void SplatRenderer::resetTemporalTextures(int newW, int newH)
                                          texParams);
     };
 
-    EyeTemporalTextures& T = eyeTextures[activeEye];
-    T.warpAvgTexA   = makeRGBA(newW, newH);
-    T.warpAvgTexB   = makeRGBA(newW, newH);
-    T.warpXYZTexA   = makeRGBA(newW, newH);
-    T.warpXYZTexB   = makeRGBA(newW, newH);
-    T.currentFrameTex = makeRGBA(newW, newH);
-    T.depthTex        = makeDepth(newW, newH);
+    for (int eye = 0; eye < m_eyeCount; ++eye) {
+        EyeTemporalTextures& T = eyeTextures[eye];
+        T.warpAvgTexA   = makeRGBA(newW, newH);
+        T.warpAvgTexB   = makeRGBA(newW, newH);
+        T.warpXYZTexA   = makeRGBA(newW, newH);
+        T.warpXYZTexB   = makeRGBA(newW, newH);
+        T.currentFrameTex = makeRGBA(newW, newH);
+        T.depthTex        = makeDepth(newW, newH);
 
-    // Re‑create / re‑attach FBO
-    T.sceneFBO = std::make_shared<FrameBuffer>();
-    T.sceneFBO->Bind();
-    T.sceneFBO->AttachColor(T.currentFrameTex, GL_COLOR_ATTACHMENT0);
-    T.sceneFBO->AttachDepth (T.depthTex);
+        // Re‑create / re‑attach FBO
+        T.sceneFBO = std::make_shared<FrameBuffer>();
+        T.sceneFBO->Bind();
+        T.sceneFBO->AttachColor(T.currentFrameTex, GL_COLOR_ATTACHMENT0);
+        T.sceneFBO->AttachDepth (T.depthTex);
 
-    if (!T.sceneFBO->IsComplete())
-        Log::E("sceneFBO incomplete after resize!");
-    
+        if (!T.sceneFBO->IsComplete())
+            Log::E("sceneFBO %d incomplete after resize!", eye);
+
+        // Reset per‑eye state
+        EyeTemporalState& S = eyeState[eye];
+        S.frameCount = 0;
+    }
+
     // Update cached dimensions so Render() uses the correct viewport
     width  = newW;
     height = newH;
-
-    // Reset per‑eye state
-    EyeTemporalState& S = eyeState[activeEye];
-    S.frameCount = 0;
 }

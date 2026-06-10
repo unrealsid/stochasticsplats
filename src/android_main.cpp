@@ -14,6 +14,8 @@
 #include <sys/types.h>
 #include <string>
 #include <android/asset_manager.h>
+#include <chrono>
+#include <thread>
 
 #include "core/log.h"
 #include "core/util.h"
@@ -353,6 +355,7 @@ bool g_arCorePaused = true;
 int g_screenWidth = 0;
 int g_screenHeight = 0;
 int g_displayRotation = 0;
+static std::chrono::steady_clock::time_point g_lastFrameTime;
 
 extern JavaVM* g_JavaVM; // from native-lib.cpp
 
@@ -416,6 +419,23 @@ void android_init(JNIEnv* env, jlong gl_context, jobject activity, AAssetManager
 
 void android_render()
 {
+    if (g_app == nullptr) return;
+
+    // Lock frame rate
+    int targetFps = g_app->GetTargetFps();
+    if (targetFps > 0)
+    {
+        auto now = std::chrono::steady_clock::now();
+        auto frameDuration = std::chrono::microseconds(1000000 / targetFps);
+        auto elapsed = now - g_lastFrameTime;
+        if (elapsed < frameDuration)
+        {
+            std::this_thread::sleep_for(frameDuration - elapsed);
+            now = std::chrono::steady_clock::now();
+        }
+        g_lastFrameTime = now;
+    }
+
     EGLint screenWidth = 0;
     EGLint screenHeight = 0;
 
@@ -425,8 +445,6 @@ void android_render()
     eglQuerySurface(display, surface, EGL_WIDTH, &screenWidth);
     eglQuerySurface(display, surface, EGL_HEIGHT, &screenHeight);
 
-    if (g_app == nullptr) return;
-
     if (g_cameraAccess && !g_arCorePaused)
     {
         JNIEnv* env = nullptr;
@@ -434,6 +452,7 @@ void android_render()
         {
             if (!g_arCoreInitialized)
             {
+                g_arCoreManager.SetTargetFps(targetFps);
                 if (g_arCoreManager.Initialize(env, g_activityGlobal, g_activityGlobal))
                 {
                     g_arCoreManager.InitializeGL();
@@ -443,6 +462,7 @@ void android_render()
                     Log::D("ARCore Initialized\n");
                 }
             }
+// ... (rest of the tracking logic remains same)
 
             if (g_arCoreInitialized)
             {
@@ -470,7 +490,12 @@ void android_render()
         }
     }
 
-    float dt = 1.0f / 72.0f;
+    static auto lastUpdateTime = std::chrono::steady_clock::now();
+    auto currentTime = std::chrono::steady_clock::now();
+    float dt = std::chrono::duration<float>(currentTime - lastUpdateTime).count();
+    lastUpdateTime = currentTime;
+    if (dt <= 0.0f || dt > 0.1f) dt = 1.0f / (float)(targetFps > 0 ? targetFps : 30);
+
     if (!g_app->Render(dt, glm::ivec2(screenWidth, screenHeight)))
     {
         Log::E("App::Render failed!\n");

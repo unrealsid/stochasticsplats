@@ -75,6 +75,9 @@ public:
     void SetActiveEye(int eyeIndex) { activeEye = eyeIndex; }
     void SetPresentFbo(GLuint fbo) { presentFbo = fbo; }
 
+    int GetWidth() const { return width; }
+    int GetHeight() const { return height; }
+
     // Configuration methods
     void resetTemporalTextures();
     void resetTemporalTextures(int newW, int newH);
@@ -147,6 +150,7 @@ private:
     int m_eyeCount = 1;
     int activeEye = 0;
     GLuint presentFbo = 0;
+    class App* app = nullptr;
     std::vector<EyeTemporalTextures> eyeTextures;
     std::vector<EyeTemporalState> eyeState; 
 

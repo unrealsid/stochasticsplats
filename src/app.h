@@ -64,6 +64,10 @@ public:
     void SetCustomWidth(int width) { customWidth = width; }
     void SetCustomHeight(int height) { customHeight = height; }
     std::string GetRenderMode() const { return opt.renderMode; }
+    float GetRenderScale() const { return opt.renderScale; }
+    void SetRenderScale(float scale) { opt.renderScale = scale; }
+    int GetTargetFps() const { return opt.targetFps; }
+    void SetTargetFps(int fps) { opt.targetFps = fps; }
 
     using VoidCallback = std::function<void()>;
     void OnQuit(const VoidCallback& cb);
@@ -92,6 +96,8 @@ public:
         bool importFullSH = true;
         std::string renderMode = "ST";
         bool taa = false;
+        int targetFps = 30;
+        float renderScale = 0.5f;
     };
 
 protected:
