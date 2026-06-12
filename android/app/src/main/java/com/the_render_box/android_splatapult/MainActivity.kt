@@ -27,7 +27,7 @@ class MainActivity : AppCompatActivity() , GLSurfaceView.Renderer {
 
     val TAG: String = MainActivity::class.java.getSimpleName()
 
-    val useARCore : Boolean = false;
+    val useARCore : Boolean = true;
 
     private var snackbar: Snackbar? = null
     private var surfaceView: GLSurfaceView? = null

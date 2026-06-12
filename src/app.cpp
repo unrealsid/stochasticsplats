@@ -1019,6 +1019,7 @@ bool App::Render(float dt, const glm::ivec2& windowSize)
         }
         else
         {
+            splatRenderer->SetPresentFbo(useFbo ? fbo->fbo : 0);
             splatRenderer->Sort(cameraMat, projMat, nearFar);
             splatRenderer->Render(cameraMat, projMat, viewport, nearFar);
         }

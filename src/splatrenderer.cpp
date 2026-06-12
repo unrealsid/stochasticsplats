@@ -13,17 +13,17 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #ifndef __ANDROID__
-  #include <GL/glew.h>
+#include <GL/glew.h>
 #else
-  #include <GLES3/gl3.h>
-  #include <GLES3/gl3ext.h>
+#include <GLES3/gl3.h>
+#include <GLES3/gl3ext.h>
 #endif
 
 #ifdef TRACY_ENABLE
-  #include <tracy/Tracy.hpp>
+#include <tracy/Tracy.hpp>
 #else
-  #define ZoneScoped
-  #define ZoneScopedNC(NAME, COLOR)
+#define ZoneScoped
+#define ZoneScopedNC(NAME, COLOR)
 #endif
 
 #include "splatrenderer.h"
@@ -39,14 +39,14 @@ using namespace splat;
 static const uint32_t NUM_BLOCKS_PER_WORKGROUP = 1024;
 // Full-screen quad vertices (positions and texCoords), for triangle strip
 static const float quadVertices[] = {
-    // positions   // texCoords
-    -1.0f,  1.0f,   0.0f, 1.0f,
-    -1.0f, -1.0f,   0.0f, 0.0f,
-     1.0f, -1.0f,   1.0f, 0.0f,
+        // positions   // texCoords
+        -1.0f,  1.0f,   0.0f, 1.0f,
+        -1.0f, -1.0f,   0.0f, 0.0f,
+        1.0f, -1.0f,   1.0f, 0.0f,
 
-    -1.0f,  1.0f,   0.0f, 1.0f,
-     1.0f, -1.0f,   1.0f, 0.0f,
-     1.0f,  1.0f,   1.0f, 1.0f
+        -1.0f,  1.0f,   0.0f, 1.0f,
+        1.0f, -1.0f,   1.0f, 0.0f,
+        1.0f,  1.0f,   1.0f, 1.0f
 };
 
 static void SetupAttrib(int loc, const BinaryAttribute& attrib, int32_t count, size_t stride)
@@ -67,8 +67,8 @@ SplatRenderer::~SplatRenderer()
 bool SplatRenderer::LoadShader(std::string renderMode, bool useMultiRadixSort)
 {
     if (renderMode == "AB"){
-        if (!splatProg->LoadVertGeomFrag("shader/splat_vert.glsl", 
-            "shader/splat_geom.glsl", "shader/splat_frag.glsl"))
+        if (!splatProg->LoadVertGeomFrag("shader/splat_vert.glsl",
+                                         "shader/splat_geom.glsl", "shader/splat_frag.glsl"))
         {
             Log::E("Error loading splat shaders!\n");
             return false;
@@ -99,43 +99,43 @@ bool SplatRenderer::LoadShader(std::string renderMode, bool useMultiRadixSort)
         }
     }  else if (renderMode == "ST") {
         if (!splatProg->LoadVertGeomFrag("shader/splat_vert.glsl",
-          "shader/splat_geom.glsl",
-          "shader/splat_frag_ST.glsl")) {
-          Log::E("Error loading splat shaders!\n");
-          return false; 
+                                         "shader/splat_geom.glsl",
+                                         "shader/splat_frag_ST.glsl")) {
+            Log::E("Error loading splat shaders!\n");
+            return false;
         }
-      }
-      else if (renderMode == "ST-popfree") {
+    }
+    else if (renderMode == "ST-popfree") {
         if (!splatProg->LoadVertGeomFrag("shader/splat_vert_ST_popfree.glsl",
-          "shader/splat_geom_ST_popfree.glsl",
-          "shader/splat_frag_ST.glsl")) {
-          Log::E("Error loading splat shaders!\n");
-          return false;
+                                         "shader/splat_geom_ST_popfree.glsl",
+                                         "shader/splat_frag_ST.glsl")) {
+            Log::E("Error loading splat shaders!\n");
+            return false;
         }
-      }
-      if (renderMode != "AB" && taa) {
+    }
+    if (renderMode != "AB" && taa) {
         // warp the previous average frame to current view
         warpProg = std::make_shared<Program>();
         if (!warpProg->LoadVertFrag("shader/warp_vert.glsl",
-                                   "shader/warp_frag.glsl")) {
-          Log::E("Error loading warp shader!\n");
-          return false;
+                                    "shader/warp_frag.glsl")) {
+            Log::E("Error loading warp shader!\n");
+            return false;
         }
         // average over the previous frame average and the current one
         avgProg = std::make_shared<Program>();
-        if (!avgProg->LoadVertFrag("shader/avg_vert.glsl", 
+        if (!avgProg->LoadVertFrag("shader/avg_vert.glsl",
                                    "shader/avg_frag.glsl")) {
             Log::E("Error loading avg shader!\n");
             return false;
         }
         // display the final result
         displayProg = std::make_shared<Program>();
-        if (!displayProg->LoadVertFrag("shader/avg_vert.glsl", 
+        if (!displayProg->LoadVertFrag("shader/avg_vert.glsl",
                                        "shader/display_frag.glsl")) {
             Log::E("Error loading display shader!\n");
             return false;
         }
-      }
+    }
     return true;
 }
 
@@ -162,7 +162,7 @@ bool SplatRenderer::Init(std::shared_ptr<GaussianCloud> gaussianCloud,
     m_eyeCount = ineyeCount;
 
     splatProg = std::make_shared<Program>();
-    
+
     if (isFramebufferSRGBEnabled || gaussianCloud->HasFullSH())
     {
         std::string defines = "";
@@ -186,9 +186,9 @@ bool SplatRenderer::Init(std::shared_ptr<GaussianCloud> gaussianCloud,
         // Build position vector for depth sorting
         posVec.reserve(numGaussians);
         gaussianCloud->ForEachPosWithAlpha([this](const float* pos)
-        {
-            posVec.emplace_back(glm::vec4(pos[0], pos[1], pos[2], 1.0f));
-        });
+                                           {
+                                               posVec.emplace_back(glm::vec4(pos[0], pos[1], pos[2], 1.0f));
+                                           });
         depthVec.resize(numGaussians);
     } else if (taa) {
         if (!InitializeTAA()) {
@@ -253,19 +253,19 @@ bool SplatRenderer::CreateTAATextureBuffers(const Texture::Params& texParams)
     for (int eye = 0; eye < m_eyeCount; eye++) {
         // Create temporal accumulation textures
         eyeTextures[eye].warpXYZTexA = std::make_shared<Texture>(
-            width, height, GL_RGBA32F, GL_RGBA, GL_FLOAT, texParams);
+                width, height, GL_RGBA32F, GL_RGBA, GL_FLOAT, texParams);
         eyeTextures[eye].warpAvgTexA = std::make_shared<Texture>(
-            width, height, GL_RGBA32F, GL_RGBA, GL_FLOAT, texParams);
+                width, height, GL_RGBA32F, GL_RGBA, GL_FLOAT, texParams);
         eyeTextures[eye].warpXYZTexB = std::make_shared<Texture>(
-            width, height, GL_RGBA32F, GL_RGBA, GL_FLOAT, texParams);
+                width, height, GL_RGBA32F, GL_RGBA, GL_FLOAT, texParams);
         eyeTextures[eye].warpAvgTexB = std::make_shared<Texture>(
-            width, height, GL_RGBA32F, GL_RGBA, GL_FLOAT, texParams);
-                
+                width, height, GL_RGBA32F, GL_RGBA, GL_FLOAT, texParams);
+
         // Create per-eye scene textures
         eyeTextures[eye].currentFrameTex = std::make_shared<Texture>(
-            width, height, GL_RGBA32F, GL_RGBA, GL_FLOAT, texParams);
+                width, height, GL_RGBA32F, GL_RGBA, GL_FLOAT, texParams);
         eyeTextures[eye].depthTex = std::make_shared<Texture>(
-            width, height, GL_DEPTH_COMPONENT32F, GL_DEPTH_COMPONENT, GL_FLOAT, texParams);
+                width, height, GL_DEPTH_COMPONENT32F, GL_DEPTH_COMPONENT, GL_FLOAT, texParams);
 
         // Create per-eye scene FBO
         eyeTextures[eye].sceneFBO = std::make_shared<FrameBuffer>();
@@ -286,7 +286,7 @@ bool SplatRenderer::CreateTAATextureBuffers(const Texture::Params& texParams)
     sumFBO->Bind();
     sumFBO->AttachColor(eyeTextures[0].warpAvgTexB, GL_COLOR_ATTACHMENT0);
     sumFBO->AttachColor(eyeTextures[0].warpXYZTexB, GL_COLOR_ATTACHMENT1);
-    
+
     return true;
 }
 
@@ -324,7 +324,7 @@ bool SplatRenderer::InitializeSortingBuffers(bool useMultiRadixSort)
 
     atomicCounterVec.resize(1, 0);
     atomicCounterBuffer = std::make_shared<BufferObject>(GL_ATOMIC_COUNTER_BUFFER, atomicCounterVec, GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT);
-    
+
     return true;
 }
 
@@ -502,8 +502,8 @@ void SplatRenderer::Render(const glm::mat4& cameraMat, const glm::mat4& projMat,
 
     {
         glViewport((GLint)viewport.x, (GLint)viewport.y,
-           (GLint)viewport.z, (GLint)viewport.w);
-        
+                   (GLint)viewport.z, (GLint)viewport.w);
+
         float width = viewport.z;
         float height = viewport.w;
         float aspectRatio = width / height;
@@ -523,7 +523,7 @@ void SplatRenderer::Render(const glm::mat4& cameraMat, const glm::mat4& projMat,
         }
 
         splatVao->Bind();
-        
+
         if (renderMode == "AB") {
             glDrawElements(GL_POINTS, sortCount, GL_UNSIGNED_INT, nullptr);
         }
@@ -532,20 +532,20 @@ void SplatRenderer::Render(const glm::mat4& cameraMat, const glm::mat4& projMat,
                 EyeTemporalState& currentEyeState = eyeState[activeEye];
                 EyeTemporalTextures& currentEyeTextures = eyeTextures[activeEye];
                 currentEyeState.frameCount++;
-                
+
                 if (currentEyeState.frameCount > 1) {
-                currentEyeState.prev_pvmat = currentEyeState.pvmat;
+                    currentEyeState.prev_pvmat = currentEyeState.pvmat;
                 } else {
-                currentEyeState.prev_pvmat = projMat * viewMat;
+                    currentEyeState.prev_pvmat = projMat * viewMat;
                 }
-                
+
                 currentEyeState.pvmat = projMat * viewMat;
                 // Use per-eye scene FBO for VR
                 currentEyeTextures.sceneFBO->Bind();
                 glViewport(0, 0, (GLint)viewport.z, (GLint)viewport.w);
                 glEnable(GL_DEPTH_TEST);
                 glDepthFunc(GL_LESS);
-                glClear(GL_DEPTH_BUFFER_BIT); // Only clear depth to keep AR background
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             }
             glDrawElements(GL_POINTS, (GLsizei)numGaussians, GL_UNSIGNED_INT, nullptr);
 
@@ -610,7 +610,7 @@ void SplatRenderer::BuildVertexArrayObject(std::shared_ptr<GaussianCloud> gaussi
 void SplatRenderer::drawFullscreenQuad()
 {
     glBindVertexArray(quadVAO);
-    glDrawArrays(GL_TRIANGLES, 0, 6); 
+    glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);
 }
 
@@ -621,11 +621,11 @@ void SplatRenderer::bindTex2D(int loc, const std::shared_ptr<Texture>& tex)
 }
 
 void SplatRenderer::runWarpPass(
-    const std::shared_ptr<Texture>& inAvg,
-    const std::shared_ptr<Texture>& inXYZ,
-    const std::shared_ptr<Texture>& outAvg,
-    const std::shared_ptr<Texture>& outXYZ,
-    const glm::mat4& pv)
+        const std::shared_ptr<Texture>& inAvg,
+        const std::shared_ptr<Texture>& inXYZ,
+        const std::shared_ptr<Texture>& outAvg,
+        const std::shared_ptr<Texture>& outXYZ,
+        const glm::mat4& pv)
 {
     static const GLfloat ZEROS[4] = {0,0,0,0};
 
@@ -651,15 +651,15 @@ void SplatRenderer::runWarpPass(
 }
 
 void SplatRenderer::runAveragePass(
-    const EyeTemporalTextures& T,
-    const std::shared_ptr<Texture>& inAvg,
-    const std::shared_ptr<Texture>& inXYZ,
-    const std::shared_ptr<Texture>& outAvg,
-    const std::shared_ptr<Texture>& outXYZ,
-    const EyeTemporalState& state,
-    bool viewChanged,
-    const glm::vec4& viewport)
-{     
+        const EyeTemporalTextures& T,
+        const std::shared_ptr<Texture>& inAvg,
+        const std::shared_ptr<Texture>& inXYZ,
+        const std::shared_ptr<Texture>& outAvg,
+        const std::shared_ptr<Texture>& outXYZ,
+        const EyeTemporalState& state,
+        bool viewChanged,
+        const glm::vec4& viewport)
+{
     avgProg->Bind();
     avgProg->SetUniform("invProjViewMat", glm::inverse(state.pvmat));
     avgProg->SetUniform("viewChanged",    viewChanged);
@@ -682,19 +682,19 @@ void SplatRenderer::runAveragePass(
 }
 
 bool matricesNotEqual(const glm::mat4& a, const glm::mat4& b,
-    float epsilon = 1e-2f) {
-        for (int i = 0; i < 4; ++i) {
-            if (!glm::all(glm::lessThan(glm::abs(a[i] - b[i]), glm::vec4(epsilon))))
-                return true;
-        }
-        return false;
+                      float epsilon = 1e-2f) {
+    for (int i = 0; i < 4; ++i) {
+        if (!glm::all(glm::lessThan(glm::abs(a[i] - b[i]), glm::vec4(epsilon))))
+            return true;
+    }
+    return false;
 }
 
 void SplatRenderer::Average(const glm::vec4& viewport)
 {
     ZoneScoped;
     GL_ERROR_CHECK("SplatRenderer::Average() begin");
-    {        
+    {
         ZoneScopedNC("draw", tracy::Color::Red4);
 
         glDisable(GL_BLEND);
@@ -702,24 +702,21 @@ void SplatRenderer::Average(const glm::vec4& viewport)
 
         EyeTemporalState& S = eyeState[activeEye];
         EyeTemporalTextures& T = eyeTextures[activeEye];
-    
+
         // [TODO] this threshold can be adjusted
-        bool view_changed = matricesNotEqual(S.pvmat, S.prev_pvmat, 1e-3f);
+        bool view_changed = matricesNotEqual(S.pvmat, S.prev_pvmat, 0.001f);
+
+        if (view_changed) {
+            runWarpPass(T.warpAvgTexA, T.warpXYZTexA, T.warpAvgTexB, T.warpXYZTexB, S.pvmat);
+        } else {
+            std::swap(T.warpXYZTexA, T.warpXYZTexB);
+            std::swap(T.warpAvgTexA, T.warpAvgTexB);
+        }
 
         std::shared_ptr<Texture> currXYZTex = T.warpXYZTexA;
         std::shared_ptr<Texture> nextXYZTex = T.warpXYZTexB;
         std::shared_ptr<Texture> currAvgTex = T.warpAvgTexA;
         std::shared_ptr<Texture> nextAvgTex = T.warpAvgTexB;
-
-        if (S.frameCount <= 1) {
-            nextXYZTex = currXYZTex;
-            nextAvgTex = currAvgTex;
-        } else if (view_changed) {
-            runWarpPass(currAvgTex, currXYZTex, nextAvgTex, nextXYZTex, S.pvmat);
-        } else {
-            std::swap(T.warpXYZTexA, T.warpXYZTexB);
-            std::swap(T.warpAvgTexA, T.warpAvgTexB);
-        }
 
         runAveragePass(T, nextAvgTex, nextXYZTex, currAvgTex, currXYZTex, S, view_changed, viewport);
 
@@ -742,14 +739,14 @@ void SplatRenderer::resetTemporalTextures()
 
     EyeTemporalTextures& T      = eyeTextures[activeEye];
     EyeTemporalState&    state  = eyeState[activeEye];
-    
+
     auto clear = [this](const std::shared_ptr<Texture>& tex,
-                    GLenum fmt = GL_RGBA, GLenum type = GL_FLOAT)
+                        GLenum fmt = GL_RGBA, GLenum type = GL_FLOAT)
     {
         //TODO: Fix android usage for glClearImage
         if (tex)  // tex can be null during first initialisation
 #ifndef __ANDROID__
-        {
+            {
             static const GLfloat ZEROS[4] = {0.f, 0.f, 0.f, 0.f};
             glClearTexImage(tex->GetObj(), 0, fmt, type, ZEROS);
         }
