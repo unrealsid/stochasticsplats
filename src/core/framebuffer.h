@@ -27,6 +27,8 @@ struct FrameBuffer
     void AttachDepth(std::shared_ptr<Texture> depthTex);
     void AttachStencil(std::shared_ptr<Texture> stencilTex);
 
+    void Unbind();
+
     bool IsComplete() const;
 
     std::shared_ptr<Texture> GetColorTexture() const { return colorAttachment; }

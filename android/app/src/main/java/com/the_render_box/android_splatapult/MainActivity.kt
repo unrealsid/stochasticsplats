@@ -27,6 +27,8 @@ class MainActivity : AppCompatActivity() , GLSurfaceView.Renderer {
 
     val TAG: String = MainActivity::class.java.getSimpleName()
 
+    val useARCore : Boolean = false;
+
     private var snackbar: Snackbar? = null
     private var surfaceView: GLSurfaceView? = null
 
@@ -90,21 +92,29 @@ class MainActivity : AppCompatActivity() , GLSurfaceView.Renderer {
         if (requestCode == 0)
         {
             setCameraAccess(true)
+            return;
         }
+
+        setCameraAccess(false)
     }
 
     override fun onResume() {
         super.onResume()
         binding.surfaceView.onResume()
 
-        //ARCore requires camera permissions to operate. If we did not yet obtain runtime
-        //permission on Android M and above, now is a good time to ask the user for it.
-        if (!CameraPermissionHelper.hasCameraPermission(this)) {
-            CameraPermissionHelper.requestCameraPermission(this)
-            return
+        if(useARCore){
+            //ARCore requires camera permissions to operate. If we did not yet obtain runtime
+            //permission on Android M and above, now is a good time to ask the user for it.
+            if (!CameraPermissionHelper.hasCameraPermission(this)) {
+                CameraPermissionHelper.requestCameraPermission(this)
+                return
+            }
+        }
+        else{
+            setCameraAccess(false)
         }
 
-        setCameraAccess(true)
+        //setCameraAccess(true)
 
         try {
             JniInterface.onResume()

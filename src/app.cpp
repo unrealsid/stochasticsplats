@@ -349,13 +349,15 @@ App::ParseResult App::ParseArguments(int argc, const char* argv[])
 
     if (options[RENDER_MODE] && options[RENDER_MODE].arg)
     {
-        const std::vector<std::string> validRenderModes = {
+        const std::vector<std::string> validRenderModes =
+        {
             "ST",
             "ST-popfree",
             "AB"
         };
         std::string mode = options[RENDER_MODE].arg;
-        if (std::find(validRenderModes.begin(), validRenderModes.end(), mode) == validRenderModes.end()) {
+        if (std::find(validRenderModes.begin(), validRenderModes.end(), mode) == validRenderModes.end())
+        {
           std::cerr << "Error: Invalid value for --render_mode: " << mode << std::endl;
           std::cerr << "Valid options are:";
           for (const auto& opt : validRenderModes) std::cerr << " " << opt;

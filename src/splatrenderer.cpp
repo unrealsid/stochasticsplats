@@ -233,6 +233,9 @@ bool SplatRenderer::InitializeTAA()
         return false;
     }
 
+    //Create TAA clear Framebuffer since glTexClearColor does not work on OpenGL ES
+    clearFBO= std::make_shared<FrameBuffer>();
+
     for (activeEye = 0; activeEye < m_eyeCount; ++activeEye) {
         resetTemporalTextures();
     }
@@ -278,7 +281,7 @@ bool SplatRenderer::CreateTAATextureBuffers(const Texture::Params& texParams)
 
     // Create FBOs for temporal accumulation
     sumFBO = std::make_shared<FrameBuffer>();
-    
+
     // Initialize FBOs with first eye's textures (will be updated per-eye)
     sumFBO->Bind();
     sumFBO->AttachColor(eyeTextures[0].warpAvgTexB, GL_COLOR_ATTACHMENT0);
@@ -631,6 +634,8 @@ void SplatRenderer::runWarpPass(
     glClearTexImage(outAvg->GetObj(), 0, GL_RGBA, GL_FLOAT, ZEROS);
     glClearTexImage(outXYZ->GetObj(), 0, GL_RGBA, GL_FLOAT, ZEROS);
 #else
+    ClearTemporalTextures(outAvg);
+    ClearTemporalTextures(outXYZ);
 #endif
 
     warpProg->Bind();
@@ -705,7 +710,7 @@ void SplatRenderer::Average(const glm::vec4& viewport)
         std::shared_ptr<Texture> nextXYZTex = T.warpXYZTexB;
         std::shared_ptr<Texture> currAvgTex = T.warpAvgTexA;
         std::shared_ptr<Texture> nextAvgTex = T.warpAvgTexB;
-        
+
         if (S.frameCount <= 1) {
             nextXYZTex = currXYZTex;
             nextAvgTex = currAvgTex;
@@ -738,15 +743,18 @@ void SplatRenderer::resetTemporalTextures()
     EyeTemporalTextures& T      = eyeTextures[activeEye];
     EyeTemporalState&    state  = eyeState[activeEye];
     
-    auto clear = [](const std::shared_ptr<Texture>& tex,
+    auto clear = [this](const std::shared_ptr<Texture>& tex,
                     GLenum fmt = GL_RGBA, GLenum type = GL_FLOAT)
     {
         //TODO: Fix android usage for glClearImage
         if (tex)  // tex can be null during first initialisation
 #ifndef __ANDROID__
+        {
+            static const GLfloat ZEROS[4] = {0.f, 0.f, 0.f, 0.f};
             glClearTexImage(tex->GetObj(), 0, fmt, type, ZEROS);
+        }
 #else
-        return;
+            ClearTemporalTextures(tex);
 #endif
     };
 
@@ -808,3 +816,18 @@ void SplatRenderer::resetTemporalTextures(int newW, int newH)
     width  = newW;
     height = newH;
 }
+
+bool SplatRenderer::ClearTemporalTextures(const std::shared_ptr<Texture>& textureToClear)
+{
+    clearFBO->Bind();
+    clearFBO->AttachColor(textureToClear, GL_COLOR_ATTACHMENT0);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    clearFBO->Unbind();
+
+    return true;
+}
+
+

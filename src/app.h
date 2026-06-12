@@ -95,7 +95,7 @@ public:
         bool drawCameraPath = false;
         bool importFullSH = true;
         std::string renderMode = "ST";
-        bool taa = false;
+        bool taa = true;
         int targetFps = 30;
         float renderScale = 0.5f;
     };

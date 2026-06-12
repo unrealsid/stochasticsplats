@@ -1,5 +1,8 @@
 /*%%HEADER%%*/
 
+precision highp float;
+precision highp int;
+precision highp image2D;
 
 uniform sampler2D currentColorTexture;  // Current color texture
 uniform sampler2D currentDepthTexture;  // Current depth texture (normalized depth)
@@ -24,19 +27,19 @@ void main() {
 
   // Check if we have valid warped data (alpha > 0 means warp shader wrote to this pixel)
   bool hasValidWarpedData = warpedColor.w > 0.0;
-  bool shouldUseTemporalData = !viewChanged || (hasValidWarpedData && distance < 100.0);
+  bool shouldUseTemporalData = !viewChanged || (hasValidWarpedData && distance < 100.0f);
   
   if (shouldUseTemporalData) {
-    float alpha = min(warpedColor.w, 128);
-    outXYZ.xyz = (alpha / (alpha + 1)) * warpedXYZ.xyz +
-                 (1.0f / (alpha + 1)) * worldCoords.xyz;
-    outColor.xyz = (alpha / (alpha + 1)) * warpedColor.xyz +
-                   (1.0f / (alpha + 1)) * currentColor.xyz;
-    outColor.w = min(alpha + 1, 128);
+    float alpha = min(warpedColor.w, 128.0);
+    outXYZ.xyz = (alpha / (alpha + 1.0f)) * warpedXYZ.xyz +
+                 (1.0f / (alpha + 1.0f)) * worldCoords.xyz;
+    outColor.xyz = (alpha / (alpha + 1.0f)) * warpedColor.xyz +
+                   (1.0f / (alpha + 1.0f)) * currentColor.xyz;
+    outColor.w = min(alpha + 1.0f, 128.0f);
   } else {
     // No valid temporal data - start fresh with current frame
     outXYZ = worldCoords;
     outColor = currentColor;
-    outColor.w = 1.0;  // Start accumulation from 1
+    outColor.w = 1.0f;  // Start accumulation from 1
   }
 }

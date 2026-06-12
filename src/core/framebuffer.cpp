@@ -91,3 +91,9 @@ bool FrameBuffer::IsComplete() const
     }
     return true;
 }
+
+void FrameBuffer::Unbind()
+{
+    colorAttachment = nullptr;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}

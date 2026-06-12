@@ -205,6 +205,14 @@ struct AppContext
         UnpackAsset("shader/text_frag.glsl");
         UnpackAsset("shader/text_vert.glsl");
 
+        UnpackAsset("shader/warp_frag.glsl");
+        UnpackAsset("shader/warp_vert.glsl");
+
+        UnpackAsset("shader/avg_vert.glsl");
+        UnpackAsset("shader/avg_frag.glsl");
+
+        UnpackAsset("shader/display_frag.glsl");
+
         MakeDir("font");
         UnpackAsset("font/JetBrainsMono-Medium.json");
         UnpackAsset("font/JetBrainsMono-Medium.png");
@@ -295,56 +303,6 @@ struct AppContext
         return true;
     }
 };
-
-/**
- * Process the next main command.
- */
-//static void app_handle_cmd(struct android_app* androidApp, int32_t cmd)
-//{
-//    AppContext& ctx = *(AppContext*)androidApp->userData;
-//
-//    switch (cmd)
-//    {
-//    // There is no APP_CMD_CREATE. The ANativeActivity creates the
-//    // application thread from onCreate(). The application thread
-//    // then calls android_main().
-//    case APP_CMD_START:
-//        Log::D("onStart()\n");
-//        Log::D("    APP_CMD_START\n");
-//        break;
-//    case APP_CMD_RESUME:
-//        Log::D("onResume()\n");
-//        Log::D("    APP_CMD_RESUME\n");
-//        ctx.resumed = true;
-//        break;
-//    case APP_CMD_PAUSE:
-//        Log::D("onPause()\n");
-//        Log::D("    APP_CMD_PAUSE\n");
-//        ctx.resumed = false;
-//        break;
-//    case APP_CMD_STOP:
-//        Log::D("onStop()\n");
-//        Log::D("    APP_CMD_STOP\n");
-//        break;
-//    case APP_CMD_DESTROY:
-//        Log::D("onDestroy()\n");
-//        Log::D("    APP_CMD_DESTROY\n");
-//        ctx.Clear();
-//        break;
-//    case APP_CMD_INIT_WINDOW:
-//        Log::D("surfaceCreated()\n");
-//        Log::D("    APP_CMD_INIT_WINDOW\n");
-//        if (ctx.InitWindow(androidApp->window))
-//        {
-//            ctx.sessionActive = true;
-//        }
-//        break;
-//    case APP_CMD_TERM_WINDOW:
-//        Log::D("surfaceDestroyed()\n");
-//        Log::D("    APP_CMD_TERM_WINDOW\n");
-//        break;
-//    }
-//}
 
 std::unique_ptr<App> g_app = nullptr;
 bool g_cameraAccess = false;
@@ -462,7 +420,6 @@ void android_render()
                     Log::D("ARCore Initialized\n");
                 }
             }
-// ... (rest of the tracking logic remains same)
 
             if (g_arCoreInitialized)
             {

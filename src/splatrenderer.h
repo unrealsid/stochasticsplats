@@ -113,6 +113,9 @@ private:
     bool InitializeSortingBuffers(bool useMultiRadixSort);
     bool LoadShader(std::string renderMode, bool useMultiRadixSort);
 
+    //Clears a texture when using GLSL ES
+    bool ClearTemporalTextures(const std::shared_ptr<Texture>& textureToClear);
+
     int width = 0;
     int height = 0;
 
@@ -163,6 +166,9 @@ private:
 
     GLuint quadVAO = 0, quadVBO = 0;
     std::shared_ptr<FrameBuffer> sumFBO;
+    std::shared_ptr<FrameBuffer> clearFBO;
+
+    bool ClearTemporalTextures();
 };
 
 }
