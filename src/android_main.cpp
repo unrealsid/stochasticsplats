@@ -311,6 +311,12 @@ jobject g_activityGlobal = nullptr;
 bool g_arCoreInitialized = false;
 bool g_arCorePaused = true;
 bool g_arCameraLocked = false;
+
+// Thresholds for AR camera stability
+static glm::mat4 g_lastViewMat(1.0f);
+static const float POSITION_THRESHOLD = 0.005f;
+static const float ROTATION_THRESHOLD = 0.99999f; //This is quaternion dot product
+
 int g_screenWidth = 0;
 int g_screenHeight = 0;
 int g_displayRotation = 0;
@@ -433,7 +439,22 @@ void android_render()
                         // Add 180 degree rotation along the forward axis (Z-axis in camera space)
                         glm::mat4 roll180 = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0, 0, 1));
                         viewMat = viewMat * roll180;
-                        g_app->SetCameraMatrices(viewMat, g_arCoreManager.GetProjectionMatrix());
+
+                        // Check threshold
+                        glm::vec3 pos = glm::vec3(glm::inverse(viewMat)[3]);
+                        glm::vec3 lastPos = glm::vec3(glm::inverse(g_lastViewMat)[3]);
+
+                        glm::quat rot = glm::quat_cast(viewMat);
+                        glm::quat lastRot = glm::quat_cast(g_lastViewMat);
+
+                        float posDiff = glm::distance(pos, lastPos);
+                        float rotDiff = glm::abs(glm::dot(rot, lastRot));
+
+                        if (posDiff > POSITION_THRESHOLD || rotDiff < ROTATION_THRESHOLD)
+                        {
+                            g_app->SetCameraMatrices(viewMat, g_arCoreManager.GetProjectionMatrix());
+                            g_lastViewMat = viewMat;
+                        }
                     }
                 }
                 else
