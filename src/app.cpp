@@ -893,23 +893,11 @@ void App::UpdateFps(float fps)
 
 bool App::Process(float dt)
 {
-    if (opt.androidMode)
+    if (flyCam)
     {
-        //TODO: Android input processing
-        //Should be a good spot to get IMU data
+        flyCam->Process(virtualLeftStick + mouseLookStick, virtualRightStick, virtualRoll, virtualUp, dt);
     }
-#ifdef USE_SDL
-
-    InputBuddy::Joypad joypad = inputBuddy->GetJoypad();
-    float roll = 0.0f;
-    roll -= joypad.lb ? 1.0f : 0.0f;
-    roll += joypad.rb ? 1.0f : 0.0f;
-    flyCam->Process(glm::clamp(joypad.leftStick + virtualLeftStick, -1.0f, 1.0f),
-                    glm::clamp(joypad.rightStick + virtualRightStick, -1.0f, 1.0f) + mouseLookStick / (dt > 0.0f ? dt : 1.0f),
-                    glm::clamp(roll + virtualRoll, -1.0f, 1.0f), glm::clamp(virtualUp, -1.0f, 1.0f), dt);
     mouseLookStick = glm::vec2(0.0f, 0.0f);
-
-#endif
     return true;
 }
 
@@ -1066,7 +1054,3 @@ void App::ClearCameraMatrices()
 {
     useCameraOverride = false;
 }
-
-
-
-

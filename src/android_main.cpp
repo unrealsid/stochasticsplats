@@ -310,6 +310,7 @@ ARCoreManager g_arCoreManager;
 jobject g_activityGlobal = nullptr;
 bool g_arCoreInitialized = false;
 bool g_arCorePaused = true;
+bool g_arCameraLocked = false;
 int g_screenWidth = 0;
 int g_screenHeight = 0;
 int g_displayRotation = 0;
@@ -426,15 +427,21 @@ void android_render()
                 g_arCoreManager.Update();
                 if (g_arCoreManager.IsTracking())
                 {
-                    glm::mat4 viewMat = g_arCoreManager.GetViewMatrix();
-                    // Add 180 degree rotation along the forward axis (Z-axis in camera space)
-                    glm::mat4 roll180 = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0, 0, 1));
-                    viewMat = viewMat * roll180;
-                    g_app->SetCameraMatrices(viewMat, g_arCoreManager.GetProjectionMatrix());
+                    if (!g_arCameraLocked)
+                    {
+                        glm::mat4 viewMat = g_arCoreManager.GetViewMatrix();
+                        // Add 180 degree rotation along the forward axis (Z-axis in camera space)
+                        glm::mat4 roll180 = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0, 0, 1));
+                        viewMat = viewMat * roll180;
+                        g_app->SetCameraMatrices(viewMat, g_arCoreManager.GetProjectionMatrix());
+                    }
                 }
                 else
                 {
-                    g_app->ClearCameraMatrices();
+                    if (!g_arCameraLocked)
+                    {
+                        g_app->ClearCameraMatrices();
+                    }
                 }
             }
         }
@@ -492,6 +499,12 @@ void android_onPause()
 void setCameraAccess(bool cameraAccess)
 {
     g_cameraAccess = cameraAccess;
+}
+
+void android_onTap()
+{
+    g_arCameraLocked = !g_arCameraLocked;
+    Log::I("AR Camera %s", g_arCameraLocked ? "LOCKED" : "UNLOCKED");
 }
 
 

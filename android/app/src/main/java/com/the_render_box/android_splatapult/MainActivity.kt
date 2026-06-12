@@ -47,6 +47,10 @@ class MainActivity : AppCompatActivity() , GLSurfaceView.Renderer {
             setEGLConfigChooser(8, 8, 8, 8, 24, 0)
 
             setEGLContextClientVersion(3)
+
+            setOnClickListener {
+                JniInterface.onTap()
+            }
         }
 
         binding.surfaceView.setRenderer(this)

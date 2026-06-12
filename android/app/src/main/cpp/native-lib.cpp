@@ -14,6 +14,7 @@ void android_onSurfaceChanged(int width, int height, int displayRotation);
 void android_onResume(JNIEnv* env);
 void android_onPause();
 void setCameraAccess(bool cameraAccess);
+void android_onTap();
 
 AAssetManager* g_AssetManager = nullptr;
 std::string g_ExternalDataPath;
@@ -84,4 +85,11 @@ Java_com_the_1render_1box_android_1splatapult_JniInterface_setCameraAccess(JNIEn
 {
     bool hasAccess = (camera_access == JNI_TRUE);
     setCameraAccess(hasAccess);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_the_1render_1box_android_1splatapult_JniInterface_onTap(JNIEnv *env, jclass clazz)
+{
+    android_onTap();
 }

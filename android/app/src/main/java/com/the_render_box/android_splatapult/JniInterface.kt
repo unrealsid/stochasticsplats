@@ -32,5 +32,8 @@ class JniInterface {
 
         @JvmStatic
         external fun setCameraAccess(cameraAccess : Boolean)
+
+        @JvmStatic
+        external fun onTap()
     }
 }
