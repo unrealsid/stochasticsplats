@@ -932,7 +932,7 @@ bool App::Render(float dt, const glm::ivec2& windowSize)
             fbo = std::make_shared<FrameBuffer>();
 
             Texture::Params texParams;
-            texParams.minFilter = FilterType::Linear; // Use linear for upscaling
+            texParams.minFilter = FilterType::Linear;
             texParams.magFilter = FilterType::Linear;
             texParams.sWrap = WrapType::ClampToEdge;
             texParams.tWrap = WrapType::ClampToEdge;

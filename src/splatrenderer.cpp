@@ -704,7 +704,7 @@ void SplatRenderer::Average(const glm::vec4& viewport)
         EyeTemporalTextures& T = eyeTextures[activeEye];
 
         // [TODO] this threshold can be adjusted
-        bool view_changed = matricesNotEqual(S.pvmat, S.prev_pvmat, 0.001f);
+        bool view_changed = matricesNotEqual(S.pvmat, S.prev_pvmat, 0.01f);
 
         if (view_changed) {
             runWarpPass(T.warpAvgTexA, T.warpXYZTexA, T.warpAvgTexB, T.warpXYZTexB, S.pvmat);

@@ -97,7 +97,7 @@ public:
         std::string renderMode = "ST";
         bool taa = true;
         int targetFps = 30;
-        float renderScale = 0.9f;
+        float renderScale = 0.5f;
     };
 
 protected:
