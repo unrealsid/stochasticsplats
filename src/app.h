@@ -57,14 +57,15 @@ public:
     void SetSampleCount(int count) { sampleCount = count; }
 
     void SetCameraMatrices(const glm::mat4& viewMat, const glm::mat4& projMat);
-    void ClearCameraMatrices();
+
+    [[nodiscard]] std::shared_ptr<FlyCam> GetFlyCam() const { return flyCam; }
 
     int GetCustomWidth() const { return customWidth; }
     int GetCustomHeight() const { return customHeight; }
     void SetCustomWidth(int width) { customWidth = width; }
     void SetCustomHeight(int height) { customHeight = height; }
-    std::string GetRenderMode() const { return opt.renderMode; }
-    float GetRenderScale() const { return opt.renderScale; }
+    [[nodiscard]] std::string GetRenderMode() const { return opt.renderMode; }
+    [[nodiscard]] float GetRenderScale() const { return opt.renderScale; }
     void SetRenderScale(float scale) { opt.renderScale = scale; }
     int GetTargetFps() const { return opt.targetFps; }
     void SetTargetFps(int fps) { opt.targetFps = fps; }

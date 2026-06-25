@@ -20,10 +20,8 @@
 #include "core/log.h"
 #include "core/util.h"
 #include "app.h"
-
-#include "../android/app/src/main/cpp/utils/ar_core_manager.h"
-#include "../android/app/src/main/cpp/utils/imu_sensor.h"
 #include <glm/gtc/matrix_transform.hpp>
+#include "flycam.h"
 
 // see ovrApp::HandleSessionStateChanges in SceneModelXr.cpp
 /*
@@ -68,13 +66,20 @@ static const char* EglErrorString(const EGLint error) {
     }
 }
 
+//Globals
+std::unique_ptr<App> g_app = nullptr;
+jobject g_activityGlobal = nullptr;
+glm::mat4 g_lastViewMat;
+bool g_cameraLocked = false;
+
+//point_cloud_truck_30k or treehill_point_cloud
+std::string dataFilePath = "data/point_cloud_truck_30k.ply";
+
 struct AppContext
 {
     AppContext() : resumed(false), sessionActive(false), assMan(nullptr), alwaysCopyAssets(true) {}
     bool resumed;
     bool sessionActive;
-
-    ARCoreManager ar_core_manager;
 
     struct EGLInfo
     {
@@ -101,68 +106,6 @@ struct AppContext
         egl.display = 0;
         egl.config = 0;
         egl.context = EGL_NO_CONTEXT;
-    }
-
-    bool SetupEGLContext()
-    {
-        // create the egl context
-        egl.display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-        eglInitialize(egl.display, &egl.majorVersion, &egl.minorVersion);
-        Log::D("OpenGLES majorVersion = %d, minorVersion = %d\n", egl.majorVersion, egl.minorVersion);
-        const int MAX_CONFIGS = 1024;
-        EGLConfig configs[MAX_CONFIGS];
-        EGLint numConfigs = 0;
-        if (!eglGetConfigs(egl.display, configs, MAX_CONFIGS, &numConfigs))
-        {
-            Log::E("eglGetConfigs failed: %s\n", EglErrorString(eglGetError()));
-            return false;
-        }
-        const EGLint configAttribs[] = {EGL_RED_SIZE, 8,
-                                        EGL_GREEN_SIZE, 8,
-                                        EGL_BLUE_SIZE, 8,
-                                        EGL_ALPHA_SIZE, 8, // need alpha for the multi-pass timewarp compositor
-                                        EGL_DEPTH_SIZE, 24,
-                                        EGL_STENCIL_SIZE, 0,
-                                        EGL_SAMPLES, 0,
-                                        EGL_NONE};
-
-        if (!eglChooseConfig(egl.display, configAttribs, &egl.config, 1, &numConfigs) || numConfigs == 0)
-        {
-            Log::E("eglChooseConfig() failed: %s\n", EglErrorString(eglGetError()));
-            return false;
-        }
-
-        EGLint contextAttribs[] = {EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE};
-        egl.context = eglCreateContext(egl.display, egl.config, EGL_NO_CONTEXT, contextAttribs);
-        if (egl.context == EGL_NO_CONTEXT)
-        {
-            Log::E("eglCreateContext() failed: %s", EglErrorString(eglGetError()));
-            return false;
-        }
-
-        return true;
-    }
-
-    bool InitWindow(ANativeWindow* window)
-    {
-        egl.windowSurface = eglCreateWindowSurface(egl.display, egl.config, window, nullptr);
-        if (egl.windowSurface == EGL_NO_SURFACE)
-        {
-            Log::E("eglCreateWindowSurface() failed: %s", EglErrorString(eglGetError()));
-            return false;
-        }
-
-        if (eglMakeCurrent(egl.display, egl.windowSurface, egl.windowSurface, egl.context) == EGL_FALSE)
-        {
-            Log::E("eglMakeCurrent() failed: %s", EglErrorString(eglGetError()));
-            eglDestroySurface(egl.display, egl.windowSurface);
-            eglDestroyContext(egl.display, egl.context);
-            egl.context = EGL_NO_CONTEXT;
-            return false;
-        }
-
-        Log::D("SUCCESS! Window and App are fully initialized.");
-        return true;
     }
 
     AAssetManager* g_asset_manager;
@@ -224,11 +167,9 @@ struct AppContext
         //UnpackAsset("data/sh_test/input.ply");
         MakeDir("data/sh_test/point_cloud");
         MakeDir("data/sh_test/point_cloud/iteration_30000");
-        //UnpackAsset("data/sh_test/point_cloud/iteration_30000/point_cloud.ply");
         UnpackAsset("data/test_vr.json");
-        //UnpackAsset("data/point_cloud_truck_30k.ply");
-        UnpackAsset("data/treehill_point_cloud.ply");
-        UnpackAsset("data/test.ply");
+        UnpackAsset(dataFilePath);
+        //UnpackAsset("data/test.ply");
 
         return true;
     }
@@ -305,25 +246,10 @@ struct AppContext
     }
 };
 
-std::unique_ptr<App> g_app = nullptr;
-bool g_cameraAccess = false;
-ARCoreManager g_arCoreManager;
-jobject g_activityGlobal = nullptr;
-bool g_arCoreInitialized = false;
-bool g_arCorePaused = true;
-bool g_arCameraLocked = false;
-
-// Thresholds for AR camera stability
-static glm::mat4 g_lastViewMat(1.0f);
-static const float POSITION_THRESHOLD = 0.005f;
-static const float ROTATION_THRESHOLD = 0.99999f; //This is quaternion dot product
-
 int g_screenWidth = 0;
 int g_screenHeight = 0;
 int g_displayRotation = 0;
 static std::chrono::steady_clock::time_point g_lastFrameTime;
-
-extern JavaVM* g_JavaVM; // from native-lib.cpp
 
 void android_init(JNIEnv* env, jlong gl_context, jobject activity, AAssetManager* asset_manager, const std::string& externalPath)
 {
@@ -339,8 +265,6 @@ void android_init(JNIEnv* env, jlong gl_context, jobject activity, AAssetManager
 
     AppContext ctx;
 
-    // jclass clazz = env->GetObjectClass(activity);
-
     if (!ctx.SetupAssets(asset_manager, externalPath))
     {
         Log::E("AppContext::SetupAssets failed!\n");
@@ -349,10 +273,8 @@ void android_init(JNIEnv* env, jlong gl_context, jobject activity, AAssetManager
 
     MainContext mainContext;
     mainContext.display = eglGetCurrentDisplay();
-    //mainContext.config = ctx.egl.config;
-    //mainContext.context = ctx.egl.context;
 
-    std::string dataPath = ctx.externalDataPath + "data/treehill_point_cloud.ply";
+    std::string dataPath = ctx.externalDataPath + dataFilePath;
     int argc = 6;
     const char* argv[] = {"splatapult", "-v", "-d", "--render_mode", "ST", dataPath.c_str()};
 
@@ -411,76 +333,21 @@ void android_render()
     eglQuerySurface(display, surface, EGL_WIDTH, &screenWidth);
     eglQuerySurface(display, surface, EGL_HEIGHT, &screenHeight);
 
-    if (g_cameraAccess && !g_arCorePaused)
-    {
-        JNIEnv* env = nullptr;
-        if (g_JavaVM->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_OK)
-        {
-            if (!g_arCoreInitialized)
-            {
-                g_arCoreManager.SetTargetFps(targetFps);
-                if (g_arCoreManager.Initialize(env, g_activityGlobal, g_activityGlobal))
-                {
-                    g_arCoreManager.InitializeGL();
-                    g_arCoreInitialized = true;
-                    g_arCoreManager.OnDisplayGeometryChanged(g_displayRotation, g_screenWidth, g_screenHeight);
-                    g_arCoreManager.Resume(env);
-                    Log::D("ARCore Initialized\n");
-                }
-            }
-
-            if (g_arCoreInitialized)
-            {
-                g_arCoreManager.Update();
-                if (g_arCoreManager.IsTracking())
-                {
-                    if (!g_arCameraLocked)
-                    {
-                        glm::mat4 viewMat = g_arCoreManager.GetViewMatrix();
-                        // Add 180 degree rotation along the forward axis (Z-axis in camera space)
-                        glm::mat4 roll180 = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0, 0, 1));
-                        viewMat = viewMat * roll180;
-
-                        // Check threshold
-                        glm::vec3 pos = glm::vec3(glm::inverse(viewMat)[3]);
-                        glm::vec3 lastPos = glm::vec3(glm::inverse(g_lastViewMat)[3]);
-
-                        glm::quat rot = glm::quat_cast(viewMat);
-                        glm::quat lastRot = glm::quat_cast(g_lastViewMat);
-
-                        float posDiff = glm::distance(pos, lastPos);
-                        float rotDiff = glm::abs(glm::dot(rot, lastRot));
-
-                        if (posDiff > POSITION_THRESHOLD || rotDiff < ROTATION_THRESHOLD)
-                        {
-                            g_app->SetCameraMatrices(viewMat, g_arCoreManager.GetProjectionMatrix());
-                            g_lastViewMat = viewMat;
-                        }
-                    }
-                }
-                else
-                {
-                    if (!g_arCameraLocked)
-                    {
-                        g_app->ClearCameraMatrices();
-                    }
-                }
-            }
-        }
-    }
-    else
-    {
-        if (g_app)
-        {
-            g_app->ClearCameraMatrices();
-        }
-    }
-
+    static float orbitYaw = 0.0f;
     static auto lastUpdateTime = std::chrono::steady_clock::now();
     auto currentTime = std::chrono::steady_clock::now();
     float dt = std::chrono::duration<float>(currentTime - lastUpdateTime).count();
     lastUpdateTime = currentTime;
-    if (dt <= 0.0f || dt > 0.1f) dt = 1.0f / (float)(targetFps > 0 ? targetFps : 30);
+    if (dt <= 0.0f || dt > 0.1f)
+    {
+        dt = 1.0f / (float)(targetFps > 0 ? targetFps : 30);
+    }
+
+    if (!g_cameraLocked && g_app && g_app->GetFlyCam())
+    {
+        orbitYaw += dt * 0.5f;
+        g_app->GetFlyCam()->Orbit(glm::vec3(0.0f, 0.0f, 0.0f), 10.0f, glm::radians(0.0), orbitYaw);
+    }
 
     if (!g_app->Render(dt, glm::ivec2(screenWidth, screenHeight)))
     {
@@ -494,39 +361,20 @@ void android_onSurfaceChanged(int width, int height, int displayRotation)
     g_screenWidth = width;
     g_screenHeight = height;
     g_displayRotation = displayRotation;
-    if (g_arCoreInitialized)
-    {
-        g_arCoreManager.OnDisplayGeometryChanged(displayRotation, width, height);
-    }
 }
 
 void android_onResume(JNIEnv* env)
 {
-    g_arCorePaused = false;
-    if (g_arCoreInitialized)
-    {
-        g_arCoreManager.Resume(env);
-    }
 }
 
 void android_onPause()
 {
-    g_arCorePaused = true;
-    if (g_arCoreInitialized)
-    {
-        g_arCoreManager.Pause();
-    }
-}
-
-void setCameraAccess(bool cameraAccess)
-{
-    g_cameraAccess = cameraAccess;
 }
 
 void android_onTap()
 {
-    g_arCameraLocked = !g_arCameraLocked;
-    Log::I("AR Camera %s", g_arCameraLocked ? "LOCKED" : "UNLOCKED");
+    g_cameraLocked = !g_cameraLocked;
+    Log::I("AR Camera %s", g_cameraLocked ? "LOCKED" : "UNLOCKED");
 }
 
 

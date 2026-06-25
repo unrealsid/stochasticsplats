@@ -15,11 +15,14 @@ public:
 
     void Process(const glm::vec2& leftStickIn, const glm::vec2& rightStickIn, float rollAmountIn,
                  float upAmountIn, float dt);
-    const glm::mat4& GetCameraMat() const { return cameraMat; }
+    void Orbit(const glm::vec3& target, float distance, float pitch, float yaw);
+    [[nodiscard]] const glm::mat4& GetCameraMat() const { return cameraMat; }
     void SetCameraMat(const glm::mat4& cameraMat);
 
-protected:
+    [[nodiscard]] const glm::mat4& GetViewMat() const { return viewMatrix; }
+    [[nodiscard]] const glm::mat4& GetProjectionMat() const { return projectionMatrix; }
 
+protected:
     float speed;  // units per sec
     float rotSpeed; // radians per sec
     glm::vec3 worldUp;
@@ -27,4 +30,7 @@ protected:
     glm::vec3 vel;
     glm::quat rot;
     glm::mat4 cameraMat;
+
+    glm::mat4 viewMatrix;
+    glm::mat4 projectionMatrix;
 };

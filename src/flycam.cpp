@@ -57,7 +57,7 @@ void FlyCam::Process(const glm::vec2& leftStickIn, const glm::vec2& rightStickIn
     }
 
     // make sure that cameraMat will be orthogonal, and aligned with world up.
-    if (glm::dot(z, worldUp) < 0.999f) // if w are aren't looking stright up.
+    if (glm::dot(z, worldUp) < 0.999f) // if w are aren't looking straight up.
     {
         glm::vec3 xx = glm::normalize(glm::cross(worldUp, z));
         glm::vec3 yy = glm::normalize(glm::cross(z, xx));
@@ -76,4 +76,16 @@ void FlyCam::SetCameraMat(const glm::mat4& cameraMat)
     pos = glm::vec3(cameraMat[3]);
     rot = glm::normalize(glm::quat(glm::mat3(cameraMat)));
     vel = glm::vec3(0.0f, 0.0f, 0.0f);
+}
+
+void FlyCam::Orbit(const glm::vec3& target, float distance, float pitch, float yaw)
+{
+    rot = glm::quat(glm::vec3(pitch, yaw, 0.0f));
+    
+    // Apply 180 degree rotation around the Z-axis (roll)
+    glm::quat roll180 = glm::angleAxis(glm::radians(180.0f), glm::vec3(0, 0, 1));
+    rot = rot * roll180;
+
+    pos = target + rot * glm::vec3(0.0f, 0.0f, distance);
+    cameraMat = MakeMat4(rot, pos);
 }

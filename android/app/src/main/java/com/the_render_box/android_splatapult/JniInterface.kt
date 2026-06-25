@@ -1,10 +1,6 @@
 package com.the_render_box.android_splatapult
 
 import android.app.Activity
-import android.content.Context
-import android.os.Debug
-import androidx.annotation.Keep
-import com.the_render_box.android_splatapult.utils.CameraPermissionHelper
 
 class JniInterface {
     companion object {
@@ -29,9 +25,6 @@ class JniInterface {
 
         @JvmStatic
         external fun setExternalDataPath(path: String)
-
-        @JvmStatic
-        external fun setCameraAccess(cameraAccess : Boolean)
 
         @JvmStatic
         external fun onTap()

@@ -6,16 +6,12 @@ import android.opengl.EGLContext
 import android.opengl.GLSurfaceView
 import android.os.Build
 import android.os.Bundle
-import android.os.Debug
-import android.util.Log
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.snackbar.Snackbar
-import com.the_render_box.android_splatapult.JniInterface.Companion.setCameraAccess
 import com.the_render_box.android_splatapult.databinding.ActivityMainBinding
-import com.the_render_box.android_splatapult.utils.CameraPermissionHelper
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -26,8 +22,6 @@ import javax.microedition.khronos.opengles.GL10
 class MainActivity : AppCompatActivity() , GLSurfaceView.Renderer {
 
     val TAG: String = MainActivity::class.java.getSimpleName()
-
-    val useARCore : Boolean = true;
 
     private var snackbar: Snackbar? = null
     private var surfaceView: GLSurfaceView? = null
@@ -84,48 +78,9 @@ class MainActivity : AppCompatActivity() , GLSurfaceView.Renderer {
         }
     }
 
-    //Called when a permission is triggered
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-
-        // 0 is the CAMERA_PERMISSION_CODE from your CameraPermissionHelper
-        if (requestCode == 0)
-        {
-            setCameraAccess(true)
-            return;
-        }
-
-        setCameraAccess(false)
-    }
-
     override fun onResume() {
         super.onResume()
         binding.surfaceView.onResume()
-
-        if(useARCore){
-            //ARCore requires camera permissions to operate. If we did not yet obtain runtime
-            //permission on Android M and above, now is a good time to ask the user for it.
-            if (!CameraPermissionHelper.hasCameraPermission(this)) {
-                CameraPermissionHelper.requestCameraPermission(this)
-                return
-            }
-        }
-        else{
-            setCameraAccess(false)
-        }
-
-        //setCameraAccess(true)
-
-        try {
-            JniInterface.onResume()
-        } catch (e: Exception) {
-            Log.e(TAG, "Exception resuming session", e)
-            return
-        }
     }
 
     override fun onPause() {

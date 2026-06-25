@@ -13,7 +13,6 @@ void android_render();
 void android_onSurfaceChanged(int width, int height, int displayRotation);
 void android_onResume(JNIEnv* env);
 void android_onPause();
-void setCameraAccess(bool cameraAccess);
 void android_onTap();
 
 AAssetManager* g_AssetManager = nullptr;
@@ -77,14 +76,6 @@ JNIEXPORT void JNICALL
 Java_com_the_1render_1box_android_1splatapult_JniInterface_onPause(JNIEnv *env, jclass clazz)
 {
     android_onPause();
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_the_1render_1box_android_1splatapult_JniInterface_setCameraAccess(JNIEnv *env, jclass clazz, jboolean camera_access)
-{
-    bool hasAccess = (camera_access == JNI_TRUE);
-    setCameraAccess(hasAccess);
 }
 
 extern "C"

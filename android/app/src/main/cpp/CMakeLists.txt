@@ -46,8 +46,6 @@ add_library(android_splatapult SHARED
         "${SRC_ROOT}/splatrenderer.cpp"
         "${SRC_ROOT}/vrconfig.cpp"
         native-lib.cpp
-        utils/imu_sensor.cpp
-        utils/ar_core_manager.cpp
 )
 
 target_include_directories(android_splatapult PRIVATE

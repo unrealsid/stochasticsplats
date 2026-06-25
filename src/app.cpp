@@ -1049,8 +1049,3 @@ void App::SetCameraMatrices(const glm::mat4& viewMat, const glm::mat4& projMat)
     projMatOverride = projMat;
     useCameraOverride = true;
 }
-
-void App::ClearCameraMatrices()
-{
-    useCameraOverride = false;
-}
